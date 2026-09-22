@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medeport | Planificación &amp; Cronograma de Embarques</title>
+
+<!-- =========================================================
+     FIREBASE SDK (compat, vía CDN) — necesario para el modo
+     colaborativo en tiempo real. Si no configuras firebaseConfig
+     más abajo, la app sigue funcionando en modo local (memoria
+     del navegador) sin ningún cambio de comportamiento.
+========================================================= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+  :root{
+    --navy:#1B2A4A;
+    --navy-2:#243660;
+    --ink:#1c2333;
+    --paper:#f3f5f9;
+    --card:#ffffff;
+    --line:#e1e5ee;
+    --muted:#68708a;
+    --accent:#C55A11;
+    --accent-2:#5B9BD5;
+    --ok:#385623;
+    --danger:#C00000;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(20,25,45,.06), 0 6px 20px rgba(20,25,45,.05);
+    font-family:"Segoe UI","Inter",system-ui,-apple-system,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);}
+  body{font-size:14px;line-height:1.4;}
+  h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:.2px;}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    background:linear-gradient(180deg,var(--navy) 0%, var(--navy-2) 100%);
+    color:#fff;padding:16px 24px 0 24px;
+    box-shadow:0 4px 16px rgba(10,15,35,.25);
+    position:sticky;top:0;z-index:50;
+  }
+  .topbar-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .mark{
+    width:34px;height:34px;border-radius:8px;background:#fff;color:var(--navy);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;
+  }
+  .brand .title{font-size:17px;font-weight:800;}
+  .brand .sub{font-size:11px;color:#c7d1ea;font-weight:500;letter-spacing:.4px;text-transform:uppercase;}
+  .toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .btn{
+    border:1px solid transparent;background:#fff;color:var(--navy);
+    padding:8px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:transform .08s ease, box-shadow .15s ease;
+  }
+  .btn:hover{box-shadow:0 4px 10px rgba(0,0,0,.15);transform:translateY(-1px);}
+  .btn.ghost{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.25);}
+  .btn.ghost:hover{background:rgba(255,255,255,.16);}
+  .btn.danger{background:var(--danger);color:#fff;}
+  .btn.small{padding:5px 10px;font-size:11.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  .sync-indicator{
+    display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#fff;
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+    padding:6px 12px;border-radius:20px;
+  }
+  .sync-dot{width:9px;height:9px;border-radius:50%;background:#9aa3ba;box-shadow:0 0 0 3px rgba(255,255,255,.08);}
+  .sync-dot.online{background:#4CD964;box-shadow:0 0 0 3px rgba(76,217,100,.25);}
+  .sync-dot.offline{background:#E5484D;box-shadow:0 0 0 3px rgba(229,72,77,.25);}
+  .sync-dot.local{background:#f5c542;box-shadow:0 0 0 3px rgba(245,197,66,.25);}
+
+  .tabs{display:flex;gap:2px;margin-top:14px;}
+  .tab{
+    padding:10px 18px;font-size:13px;font-weight:700;color:#c7d1ea;background:transparent;
+    border:none;border-bottom:3px solid transparent;cursor:pointer;border-radius:8px 8px 0 0;
+  }
+  .tab:hover{color:#fff;background:rgba(255,255,255,.06);}
+  .tab.active{color:#fff;background:var(--paper);color:var(--navy);border-bottom:3px solid var(--accent);}
+
+  /* ---------- LAYOUT ---------- */
+  .view{display:none;padding:22px 24px 60px 24px;max-width:1600px;margin:0 auto;}
+  .view.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:18px;}
+  .card h2{font-size:15px;color:var(--navy);}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;}
+  .muted{color:var(--muted);}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+  .empty{
+    text-align:center;padding:40px 20px;color:var(--muted);border:2px dashed var(--line);border-radius:var(--radius);
+    background:repeating-linear-gradient(135deg, rgba(27,42,74,.02) 0 10px, transparent 10px 20px);
+  }
+  .config-banner{
+    background:#fff7e0;border:1px solid #f0dfa0;color:#7a5b00;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px;
+  }
+  .config-banner code{background:#00000010;padding:1px 5px;border-radius:4px;}
+
+  /* ---------- FORM ---------- */
+  .form-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;align-items:end;}
+  .field{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .field label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;}
+  input,select,textarea{
+    border:1px solid var(--line);border-radius:7px;padding:8px 9px;font-size:13px;
+    font-family:inherit;background:#fbfcfe;color:var(--ink);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #9fb4ff88;border-color:#7f96e0;}
+
+  table{width:100%;border-collapse:collapse;font-size:12.8px;}
+  thead th{
+    text-align:left;padding:9px 10px;background:#f6f8fc;color:var(--navy);
+    border-bottom:2px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.3px;
+  }
+  tbody td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tbody tr:hover{background:#f9fafd;}
+  .badge-marca-ADIDAS{background:#ffe1e1;color:#9d0000;}
+  .badge-marca-REEBOK{background:#dbe9fb;color:#0d4a8c;}
+  .badge-marca-ADI_RBK{background:linear-gradient(90deg,#ffe1e1 50%,#dbe9fb 50%);color:#3a2a2a;}
+  .badge-tipo-CONSUMO{background:#dff0ff;color:#0b5aa8;}
+  .badge-tipo-DEPCO{background:#e4e7ef;color:#3a4360;}
+  .badge-tipo-CONSOLIDADO_OTN{background:#fde9d9;color:#8a4a12;}
+
+  /* ---------- SHIPMENT / GANTT BLOCK ---------- */
+  .shipment-block{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:22px;overflow:hidden;background:#fff;}
+  .shipment-header{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;
+    background:#fffbe6;border-bottom:2px solid #f0e2a3;
+  }
+  .tag-name{background:#FFD966;color:#5c4600;font-weight:800;padding:4px 12px;border-radius:6px;font-size:13px;}
+  .tag-tipo-CONSUMO{background:#5B9BD5;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-tipo-DEPCO{background:#8EA9DB;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-tipo-CONSOLIDADO_OTN{background:#C55A11;color:#fff;font-weight:700;padding:4px 10px;border-radius:6px;font-size:11.5px;text-transform:uppercase;}
+  .tag-consol{background:#eee;color:#555;font-weight:600;padding:4px 10px;border-radius:6px;font-size:11.5px;}
+  .tag-marca{font-weight:800;font-size:11.5px;padding:4px 10px;border-radius:6px;}
+  .tag-marca.ADIDAS{background:#C00000;color:#fff;}
+  .tag-marca.REEBOK{background:#0d4a8c;color:#fff;}
+  .tag-marca.ADI_RBK{background:linear-gradient(90deg,#C00000 50%,#0d4a8c 50%);color:#fff;}
+
+  .gantt-scroll{overflow-x:auto;padding:14px;}
+  .gantt-grid{display:grid;grid-auto-rows:min-content;row-gap:2px;position:relative;}
+  .day-head{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:4px 0;font-size:10.5px;font-weight:700;border-left:1px solid #eef0f5;color:var(--muted);
+  }
+  .day-head .dow{font-size:9.5px;text-transform:uppercase;color:#98a0b6;}
+  .day-head .num{font-size:12px;color:var(--ink);}
+  .day-head.weekend{background:#eef0f6;}
+  .day-head.holiday{background:#fde3e3;}
+  .day-head.holiday .num{color:var(--danger);}
+  .day-head.holiday::after{content:"";display:block;width:70%;height:3px;background:var(--danger);border-radius:2px;margin-top:2px;}
+  .row-track{position:relative;min-height:28px;border-left:1px solid #eef0f5;}
+  .row-track.weekend-col{background:#f7f8fb;}
+  .act-bar{
+    grid-row:1;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-size:10.3px;font-weight:700;color:#fff;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);
+  }
+  .act-bar.dark-text{color:#242424;}
+  .act-bar.bordered{box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 0 0 3px #00000055; outline:2px dashed #7a5b00; outline-offset:1px;}
+  .row-label-col{
+    position:sticky;left:0;background:#fff;padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);
+    border-right:2px solid var(--line);display:flex;align-items:center;
+  }
+  .zone-caption{font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:2px 0 2px 2px;}
+
+  .legend-table{margin-top:10px;}
+  .legend-table .sw{width:16px;height:16px;border-radius:4px;display:inline-block;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);}
+
+  /* ---------- CONSOLIDATED ---------- */
+  .month-picker{display:flex;align-items:center;gap:8px;}
+  .overlap-alert{
+    background:#fff4e5;border:1px solid #f0c98a;color:#8a5a00;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px;
+  }
+  .overlap-alert.none{background:#e9f7ec;border-color:#a9d18e;color:#2f5b1f;}
+
+  footer.hint{max-width:1600px;margin:0 auto;padding:0 24px 30px 24px;color:var(--muted);font-size:11.5px;}
+
+  @media (max-width:900px){
+    .form-grid{grid-template-columns:repeat(2,1fr);}
+  }
+
+  @media print{
+    .topbar, .no-print{display:none !important;}
+    .view{display:block !important;padding:0;}
+    body{background:#fff;}
+    .shipment-block{break-inside:avoid;}
+  }
+
+  /* ---------- MICROPROCESOS Y TAREAS ---------- */
+  .proc-switch{display:flex;gap:6px;flex-wrap:wrap;}
+  .proc-btn{
+    padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#f6f8fc;color:var(--navy);
+    font-size:12.5px;font-weight:700;cursor:pointer;
+  }
+  .proc-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .micro-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:14px 0;}
+  .micro-filters .field{min-width:170px;}
+  .micro-counter{
+    background:#f6f8fc;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--navy);
+    display:flex;gap:16px;align-items:center;font-weight:700;
+  }
+  .dep-badge{padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.2px;display:inline-block;}
+  .status-badge{padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;display:inline-block;white-space:nowrap;}
+  .status-COMPLETO{background:#e2f3e0;color:#2f6b1f;}
+  .status-PENDIENTE{background:#fff2d9;color:#8a5a00;}
+  .status-N_A{background:#ececec;color:#6b6b6b;}
+  .brand-col-head{background:#f6f8fc;}
+  .brand-col-head.ADIDAS{color:#9d0000;}
+  .brand-col-head.REEBOK{color:#0d4a8c;}
+  .micro-table-wrap{overflow-x:auto;}
+  .micro-table{min-width:1400px;}
+  .micro-table td{font-size:12px;max-width:220px;}
+  .micro-table td.wrap{white-space:normal;}
+  .obs-cell{color:var(--muted);font-style:italic;}
+  .dias-cell{font-weight:800;color:var(--navy);text-align:center;}
+
+  /* Modal genérico para agregar / editar microprocesos */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(15,20,35,.55);z-index:200;
+    display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:88vh;overflow-y:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);padding:22px;
+  }
+  .modal-box h3{color:var(--navy);font-size:16px;margin-bottom:14px;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-grid .field.full{grid-column:1/-1;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+</style>
+</head>
+<body>
+
+<div class="topbar no-print">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="mark">M</div>
+      <div>
+        <div class="title">Medeport · Planificación de Embarques</div>
+        <div class="sub">Gantt Multi-Embarque · Adidas / Reebok</div>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <div class="sync-indicator" id="syncIndicator"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Iniciando…</span></div>
+      <button class="btn" id="btnSaveNow" style="background:var(--ok);color:#fff;">💾 Guardar cambios</button>
+      <button class="btn ghost" id="btnExport">⬇ Exportar (JSON)</button>
+      <button class="btn ghost" id="btnImport">⬆ Importar</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none;">
+      <button class="btn" id="btnPrint">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="inputs">📋 Tabla de Entradas</button>
+    <button class="tab" data-view="adidas">🔴 Vista Adidas</button>
+    <button class="tab" data-view="reebok">🔵 Vista Reebok</button>
+    <button class="tab" data-view="consolidado">📊 Vista Consolidada</button>
+    <button class="tab" data-view="microprocesos">🔬 Microprocesos y Tareas</button>
+  </div>
+</div>
+
+<!-- ============ VIEW: INPUTS ============ -->
+<div class="view active" id="view-inputs">
+
+  <div class="config-banner" id="configBanner" style="display:none;"></div>
+
+  <div class="card">
+    <div class="card-head"><h2>Nuevo embarque</h2><span class="muted">Se recalculan todas las fechas automáticamente al guardar</span></div>
+    <div class="form-grid" id="shipmentForm">
+      <div class="field">
+        <label>Marca</label>
+        <select id="f_marca"><option value="ADIDAS">ADIDAS</option><option value="REEBOK">REEBOK</option><option value="ADI_RBK">ADI &amp; RBK (ambas marcas)</option></select>
+      </div>
+      <div class="field">
+        <label>Nombre embarque</label>
+        <input type="text" id="f_nombre" placeholder="PANAMA 48">
+      </div>
+      <div class="field">
+        <label>Tipo</label>
+        <select id="f_tipo"><option value="CONSUMO">CONSUMO</option><option value="DEPCO">DEPCO</option><option value="CONSOLIDADO_OTN">CONSOLIDADO (Salida OTN)</option></select>
+      </div>
+      <div class="field">
+        <label>Consolidado</label>
+        <input type="text" id="f_consolidado" placeholder="CONSOLIDADO 1 / N/A">
+      </div>
+      <div class="field">
+        <label>Fecha instrucción producto</label>
+        <input type="date" id="f_finstruccion">
+      </div>
+      <div class="field">
+        <label>Fecha arribo DEPCO (opc.)</label>
+        <input type="date" id="f_farribodepco">
+      </div>
+      <div class="field">
+        <label>Fecha arribo CD (opc.)</label>
+        <input type="date" id="f_farribocd">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn" id="btnAddShipment" style="background:var(--navy);color:#fff;">+ Agregar embarque</button>
+      <button class="btn" id="btnCancelEdit" style="display:none;background:#eee;">Cancelar edición</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Embarques registrados</h2><span class="muted" id="countShipments">0 embarques</span></div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Marca</th><th>Embarque</th><th>Tipo</th><th>Consolidado</th>
+            <th>Instr. Producto</th><th>Arribo DEPCO</th><th>Arribo CD</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="shipmentsTbody"></tbody>
+      </table>
+      <div class="empty" id="emptyShipments" style="display:none;">Aún no hay embarques. Agrega el primero con el formulario de arriba.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Feriados nacionales</h2><span class="muted">Un valor por línea, formato AAAA-MM-DD. Se excluyen del cálculo de días hábiles.</span></div>
+    <textarea id="holidaysBox" rows="4" style="width:100%;" placeholder="2026-01-01&#10;2026-05-01&#10;2026-12-25"></textarea>
+    <div style="margin-top:10px;"><button class="btn" id="btnSaveHolidays" style="background:var(--accent);color:#fff;">Guardar feriados</button></div>
+  </div>
+
+</div>
+
+<!-- ============ VIEW: ADIDAS ============ -->
+<div class="view" id="view-adidas">
+  <div class="card-head" style="margin-bottom:6px;">
+    <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
+  </div>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b> (ambas marcas).</p>
+  <div id="adidasContainer"></div>
+</div>
+
+<!-- ============ VIEW: REEBOK ============ -->
+<div class="view" id="view-reebok">
+  <div class="card-head" style="margin-bottom:6px;">
+    <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
+  </div>
+  <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b> (ambas marcas).</p>
+  <div id="reebokContainer"></div>
+</div>
+
+<!-- ============ VIEW: CONSOLIDADO ============ -->
+<div class="view" id="view-consolidado">
+  <div class="card">
+    <div class="card-head">
+      <h2>📊 Resumen consolidado del mes</h2>
+      <div class="month-picker">
+        <label class="muted" style="font-size:12px;">Mes:</label>
+        <select id="monthPicker"></select>
+      </div>
+    </div>
+    <div id="overlapAlerts"></div>
+    <div id="consolidadoGrid" class="gantt-scroll"></div>
+    <div class="empty" id="emptyConsolidado" style="display:none;">No hay embarques con fechas en el mes seleccionado.</div>
+  </div>
+</div>
+
+<!-- ============ VIEW: MICROPROCESOS Y TAREAS ============ -->
+<div class="view" id="view-microprocesos">
+  <div class="card">
+    <div class="card-head">
+      <h2>🔬 Microprocesos y Tareas</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="btnAddMicro" style="background:var(--navy);color:#fff;">+ Agregar Actividad</button>
+        <button class="btn ghost" id="btnRegenMicro" style="color:var(--navy);background:#eee;">🔄 Regenerar desde plantilla</button>
+      </div>
+    </div>
+
+    <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
+      Cada embarque de la <b>Tabla de Entradas</b> genera automáticamente su propio checklist de microprocesos, según su tipo (CONSUMO / DEPCO / CONSOLIDADO). Las columnas de marca (ADIDAS / REEBOK) se ajustan solas según la marca del embarque.
+    </p>
+
+    <div class="micro-filters">
+      <div class="field" style="min-width:280px;">
+        <label>Embarque</label>
+        <select id="microShipmentSelect"></select>
+      </div>
+      <div class="field">
+        <label>Filtro por estado</label>
+        <select id="microStatusFilter">
+          <option value="TODOS">TODOS</option>
+          <option value="COMPLETO">COMPLETO</option>
+          <option value="PENDIENTE">PENDIENTE</option>
+          <option value="N/A">N/A</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;min-width:220px;">
+        <label>Buscar actividad / observación</label>
+        <input type="text" id="microSearch" placeholder="Ej. partidas arancelarias, LPN, OTN...">
+      </div>
+      <div class="micro-counter">
+        <span>📋 <span id="microCount">0</span> actividades</span>
+        <span>✅ <span id="microDoneCount">0</span> completadas</span>
+      </div>
+    </div>
+
+    <div id="microMismatchWarning" class="overlap-alert" style="display:none;"></div>
+
+    <div class="micro-table-wrap">
+      <table class="micro-table" id="microTable">
+        <thead id="microThead"></thead>
+        <tbody id="microTbody"></tbody>
+      </table>
+      <div class="empty" id="emptyMicro" style="display:none;">No hay actividades que coincidan con el filtro/búsqueda actual.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: AGREGAR / EDITAR MICROPROCESO ============ -->
+<div class="modal-overlay" id="microModal">
+  <div class="modal-box">
+    <h3 id="microModalTitle">+ Agregar Actividad</h3>
+    <div class="modal-grid">
+      <div class="field"><label>Orden / Paso</label><input type="number" step="1" id="m_ord" placeholder="Ej. 12"></div>
+      <div class="field full"><label>Actividad</label><input type="text" id="m_act" placeholder="Descripción de la actividad"></div>
+
+      <div class="field full" id="m_singleTrackWrap">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>Status</label>
+            <select id="m_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>Fecha</label><input type="date" id="m_fecha"></div>
+          <div class="field"><label>Obs</label><input type="text" id="m_obs"></div>
+        </div>
+      </div>
+
+      <div class="field full" id="m_adidasWrap" style="display:none;">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>ADIDAS · Status</label>
+            <select id="m_adidas_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>ADIDAS · Fecha</label><input type="date" id="m_adidas_fecha"></div>
+          <div class="field"><label>ADIDAS · Obs</label><input type="text" id="m_adidas_obs"></div>
+        </div>
+      </div>
+
+      <div class="field full" id="m_reebokWrap" style="display:none;">
+        <div class="modal-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field"><label>REEBOK · Status</label>
+            <select id="m_reebok_status"><option value="">PENDIENTE</option><option value="COMPLETO">COMPLETO</option><option value="N/A">N/A</option></select>
+          </div>
+          <div class="field"><label>REEBOK · Fecha</label><input type="date" id="m_reebok_fecha"></div>
+          <div class="field"><label>REEBOK · Obs</label><input type="text" id="m_reebok_obs"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnMicroCancel" style="background:#eee;">Cancelar</button>
+      <button class="btn" id="btnMicroSave" style="background:var(--navy);color:#fff;">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<footer class="hint no-print">
+  <b>Guardado automático:</b> cada vez que agregas, editas o eliminas un embarque (o guardas feriados), los datos se guardan solos en este navegador — al volver a abrir este mismo archivo .html en el mismo navegador y equipo, todo aparecerá tal como lo dejaste. Esto es guardado <b>por navegador y por computadora</b> (no viaja si abres el archivo en otro equipo, otro navegador o en modo incógnito, y se borra si limpias el caché). Para respaldos seguros o para compartir los datos con otra persona/equipo, usa siempre <b>Exportar (JSON)</b> y luego <b>Importar</b> en el otro lado.
+  <br>Modo colaborativo: si configuras <code>firebaseConfig</code> en el código con las credenciales de tu proyecto de Firebase Realtime Database, todos los cambios se sincronizan en vivo entre Planificación y Jefatura, y el guardado local deja de ser necesario.
+  <br>Los microprocesos de la pestaña 🔬 se guardan aparte, en <code>localStorage</code> bajo la clave <code>medeport_microprocesos_v1</code>, en este mismo navegador.
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   0. CONFIGURACIÓN DE FIREBASE (colaboración en tiempo real)
+   ---------------------------------------------------------
+   1) Crea un proyecto en https://console.firebase.google.com
+   2) Activa "Realtime Database" (modo de prueba o con tus reglas)
+   3) Copia aquí las credenciales de tu proyecto (Configuración
+      del proyecto > Tus apps > SDK setup and configuration).
+   4) Sube este archivo tal cual a Netlify / GitHub Pages: no
+      necesita build ni backend adicional.
+
+   Mientras dejes los valores de ejemplo tal cual están abajo,
+   la aplicación detecta que Firebase no está configurado y
+   sigue funcionando en modo local (sin sincronización).
+========================================================= */
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",                              // <-- reemplazar
+  authDomain: "TU_PROYECTO.firebaseapp.com",         // <-- reemplazar
+  databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com", // <-- reemplazar (obligatorio para Realtime DB)
+  projectId: "TU_PROYECTO",                          // <-- reemplazar
+  storageBucket: "TU_PROYECTO.appspot.com",          // <-- reemplazar
+  messagingSenderId: "TU_SENDER_ID",                 // <-- reemplazar
+  appId: "TU_APP_ID"                                  // <-- reemplazar
+};
+
+const FIREBASE_PATH = "medeport"; // nodo raíz en la base de datos: /medeport/embarques, /medeport/holidays
+
+let cloudMode = false;
+let db = null;
+let shipmentsRef = null;
+let holidaysRef = null;
+let connectedRef = null;
+let suppressCloudEcho = false; // evita loops al escribir y luego recibir el propio cambio
+
+function isFirebaseConfigured(){
+  return firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("TU_") &&
+         firebaseConfig.databaseURL && !firebaseConfig.databaseURL.includes("TU_PROYECTO");
+}
+
+function setSyncStatus(mode){
+  // mode: 'local' | 'online' | 'offline'
+  const dot = document.getElementById("syncDot");
+  const label = document.getElementById("syncLabel");
+  dot.className = "sync-dot " + mode;
+  if(mode==="online") label.textContent = "Sincronizado con la nube";
+  else if(mode==="offline") label.textContent = "Sin conexión (reintentando…)";
+  else label.textContent = "Autoguardado local activo";
+}
+
+function initFirebase(){
+  if(!isFirebaseConfigured()){
+    setSyncStatus("local");
+    document.getElementById("configBanner").style.display = "block";
+    document.getElementById("configBanner").innerHTML =
+      "⚙️ El modo colaborativo en tiempo real está desactivado. Para activarlo, completa <code>firebaseConfig</code> en el &lt;script&gt; con las credenciales de tu proyecto de Firebase Realtime Database. Mientras tanto, tus cambios se <b>guardan automáticamente en este navegador</b> (botón 💾 Guardar cambios arriba a la derecha) y se recuperan solos cada vez que abras este mismo archivo aquí.";
+    return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    shipmentsRef = db.ref(FIREBASE_PATH + "/embarques");
+    holidaysRef = db.ref(FIREBASE_PATH + "/holidays");
+    connectedRef = db.ref(".info/connected");
+    cloudMode = true;
+
+    connectedRef.on("value", (snap)=>{
+      setSyncStatus(snap.val() === true ? "online" : "offline");
+    });
+
+    shipmentsRef.on("value",(snap)=>{
+      const val = snap.val() || {};
+      state.shipmentsMap = val;
+      renderAll();
+    });
+
+    holidaysRef.on("value",(snap)=>{
+      const val = snap.val();
+      state.holidays = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+      document.getElementById("holidaysBox").value = state.holidays.join("\n");
+      renderAll();
+    });
+  }catch(err){
+    console.error("Error inicializando Firebase:", err);
+    setSyncStatus("offline");
+    cloudMode = false;
+  }
+}
+
+/* =========================================================
+   1. ESTADO GLOBAL
+========================================================= */
+const state = {
+  shipmentsMap: {},   // { id: shipment }
+  holidays: [],
+  editingId: null
+};
+
+function getShipmentsArray(){
+  return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
+}
+function generateId(){
+  return "sh_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+}
+
+const RESPONSABLE_HORA = "5:30pm";
+
+// Marca puede ser ADIDAS, REEBOK, o ADI_RBK (embarque combinado de ambas marcas)
+const MARCA_LABELS = {ADIDAS:"ADIDAS", REEBOK:"REEBOK", ADI_RBK:"ADI & RBK"};
+function marcaLabel(marca){ return MARCA_LABELS[marca] || marca; }
+const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLIDADO (Salida OTN)"};
+function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
+function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
+/** Un embarque "ADI_RBK" pertenece a ambas vistas de marca (Adidas y Reebok) */
+function shipmentBelongsToBrand(sh, marca){ return sh.marca === marca || sh.marca === "ADI_RBK"; }
+
+/* =========================================================
+   2. UTILIDADES DE FECHA / MOTOR DE DÍAS HÁBILES
+========================================================= */
+function parseISO(str){
+  if(!str) return null;
+  const [y,m,d] = str.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+function toISO(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function fmtDMY(date){
+  if(!date) return "—";
+  const d = String(date.getDate()).padStart(2,"0");
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+function isWeekend(date){
+  const dow = date.getDay();
+  return dow === 0 || dow === 6;
+}
+function isHoliday(date){
+  return state.holidays.includes(toISO(date));
+}
+function isNonWorking(date){
+  return isWeekend(date) || isHoliday(date);
+}
+/** Equivalente a WORKDAY(fecha, dias) de Excel. Admite dias negativos. days=0 devuelve la misma fecha. */
+function addBusinessDays(date, days){
+  let result = new Date(date.getTime());
+  let remaining = Math.abs(days);
+  const step = days >= 0 ? 1 : -1;
+  while(remaining > 0){
+    result.setDate(result.getDate() + step);
+    if(!isNonWorking(result)){
+      remaining--;
+    }
+  }
+  return result;
+}
+/** Rango continuo de fechas (inclusive) */
+function dateRange(start, end){
+  const days = [];
+  let cur = new Date(start.getTime());
+  while(cur <= end){
+    days.push(new Date(cur.getTime()));
+    cur.setDate(cur.getDate()+1);
+  }
+  return days;
+}
+const DOW_LETTERS = ["D","L","M","M","J","V","S"]; // getDay(): 0=Dom ... 6=Sab
+
+/* =========================================================
+   3. MOTOR DE CÁLCULO DE ACTIVIDADES — MATRIZ ACTUALIZADA
+   Cada actividad: {key, label, responsable, color, start, end,
+                    zone: 'top' | 'main' | 'bottom', textDark}
+   zone 'top'/'bottom' son los sub-bloques (superior/inferior)
+   que se dibujan por encima/debajo de la fila principal.
+========================================================= */
+function bar(key,label,resp,color,start,end,zone,textDark,bordered){
+  return {key,label,responsable:resp,color,start,end:end||start,zone:zone||"main",textDark:!!textDark,bordered:!!bordered};
+}
+
+function computeActivities(sh){
+  const d0 = parseISO(sh.fechaInstruccion);
+  if(!d0) return [];
+  if(sh.tipo === "CONSUMO") return computeConsumo(sh, d0);
+  if(sh.tipo === "DEPCO") return computeDepco(sh, d0);
+  return computeConsolidadoOTN(sh, d0);
+}
+
+/* ---- CONSUMO (matriz actualizada según directrices más recientes) ---- */
+function computeConsumo(sh, d0){
+  const a1 = d0;                                   // Instrucciones de Importación (Producto) — Rojo
+  const a2 = addBusinessDays(a1,1);                // Instrucciones de Embarque (COMEX) — Gris
+  const a3 = addBusinessDays(a2,1);                // OC Planificación (Planificación) — Azul Marino
+  const a4 = addBusinessDays(a3,1);                // OC Canal Final / Precio Final (Producto) — Morado
+  const a5 = addBusinessDays(a4,1);                // Intercompany / Ingreso Mayorista (Planificación) — Amarillo, +1 tras Precios, sub-bloque SUPERIOR [reordenado: ahora va ANTES de Partidas]
+  const a6 = addBusinessDays(a5,1);                // Carga Partidas Arancelarias (COMEX) — Cian, +1 tras Intercompany
+  const a7 = addBusinessDays(a6,1);                // Distribución Tiendas (Tiendas) — Azul Claro, +1 tras Partidas
+  const a8 = addBusinessDays(a7,1);                // OCAs / OCIs / Traslados / Etiquetas / LPN (Planificación a CD) — Naranja, +1 tras Distribución
+
+  // Ingreso al CD: fecha de input si existe, si no +5 días hábiles tras OCAs/OCIs. Ventana de 3 días hábiles continuos.
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(a8,5);
+  const cdEnd = addBusinessDays(cdStart,2);
+  const a9 = addBusinessDays(cdStart,-5);          // LPN — EXACTAMENTE 5 días hábiles antes del arribo al CD, sub-bloque INFERIOR [antes -3]
+
+  return [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",a1,a1,"main"),
+    bar("embarque","Instrucciones de Embarque","COMEX","#A6A6A6",a2,a2,"main",true),
+    bar("oc_plan","OC Planificación","Planificación","#1B2A4A",a3,a3,"main"),
+    bar("oc_canal","OC Canal Final / Precio Final","Producto","#7030A0",a4,a4,"main"),
+    bar("intercompany","Intercompany / Ingreso Mayorista","Planificación","#FFFF00",a5,a5,"top",true),
+    bar("partidas","Carga Partidas Arancelarias","COMEX","#00FFFF",a6,a6,"main",true),
+    bar("distribucion","Distribución Tiendas","Tiendas","#5B9BD5",a7,a7,"main"),
+    bar("ocas","OCAs / OCIs / Traslados / Etiquetas / LPN","Planificación a CD","#C55A11",a8,a8,"main"),
+    bar("lpn","LPN","Planificación a CD","#A9D18E",a9,a9,"bottom",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+}
+
+/* ---- DEPCO (matriz actualizada: Intercompany y OTN ahora se calculan hacia atrás desde CD/DEPCO) ---- */
+function computeDepco(sh, d0){
+  const b1 = d0;                                    // Instrucciones de Importación (Producto) — Rojo
+  const b2 = addBusinessDays(b1,1);                 // Instrucciones de Embarque (COMEX) — Gris
+  const b3 = addBusinessDays(b2,1);                 // OC Planificación a nivel de Cartón (Planificación) — Azul Marino
+  const b4 = addBusinessDays(b3,1);                 // OC con Canal Final / Precios (Producto) — Morado, +1 tras OC Planificación
+  const b5 = addBusinessDays(b4,1);                 // Envío de Pedido a COMEX — Celeste, +1 tras Precios
+  const b6 = addBusinessDays(b5,2);                 // Carga Partidas Arancelarias (COMEX) — Cian, +2 tras Envío a COMEX
+  const b7 = addBusinessDays(b6,1);                 // Ocas / Ocis / LPN (Planificación) — Marrón/Naranja, +1 tras Partidas
+
+  // Ingreso a DEPCO / Ingreso al CD: fecha de input si existe; si no, se proyectan hacia adelante desde
+  // Ocas/Ocis/LPN (supuesto razonable, ya que el requerimiento no da una regla explícita hacia adelante para estas dos).
+  const depcoStart = sh.fechaArriboDepco ? parseISO(sh.fechaArriboDepco) : addBusinessDays(b7,2);
+  const depcoEnd = addBusinessDays(depcoStart,2);   // Ventana de 3 días hábiles
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(depcoEnd,1);
+  const cdEnd = addBusinessDays(cdStart,2);         // Ventana de 3 días hábiles
+
+  const otn = addBusinessDays(depcoStart,-3);       // OTN / Traslados / Etiquetas / Microsite — Salmón, 3 días hábiles ANTES del embarque a DEPCO, sub-bloque INFERIOR
+  const intercompany = addBusinessDays(cdStart,-6); // Intercompany / Canal Mayorista — Amarillo, 6 días hábiles ANTES del embarque al CD, sub-bloque SUPERIOR
+
+  return [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",b1,b1,"main"),
+    bar("embarque","Instrucciones de Embarque","COMEX","#A6A6A6",b2,b2,"main",true),
+    bar("oc_carton","OC Planificación a nivel de Cartón","Planificación","#1B2A4A",b3,b3,"main"),
+    bar("oc_canal","OC con Canal Final / Precios","Producto","#7030A0",b4,b4,"main"),
+    bar("envio_pedido","Envío de Pedido a COMEX","COMEX","#29B6F6",b5,b5,"main",true),
+    bar("partidas","Carga Partidas Arancelarias","COMEX","#00FFFF",b6,b6,"main",true),
+    bar("ocas_ocis_lpn","Ocas / Ocis / LPN","Planificación","#C55A11",b7,b7,"main"),
+    bar("intercompany","Intercompany / Canal Mayorista","Planificación","#FFFF00",intercompany,intercompany,"top",true),
+    bar("otn","OTN / Traslados / Etiquetas / Microsite","Planificación","#F4B183",otn,otn,"bottom",true),
+    bar("ingreso_depco","Ingreso Embarque a DEPCO","Logística","#70AD47",depcoStart,depcoEnd,"main",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+}
+
+/* ---- CONSOLIDADO (Salida OTN) — flujo independiente, 7 hitos ---- */
+function computeConsolidadoOTN(sh, d0){
+  const c1 = d0;                                    // Instrucciones de Importación (Producto) — Rojo
+  const c2 = addBusinessDays(c1,1);                 // Envío del pedido a COMEX (Planificación) — Celeste, +1 tras Importación
+  const c3 = addBusinessDays(c2,1);                 // Ingresos Tiendas / Ref. Compra (Planificación) — Beige, +1 tras Envío COMEX
+  const c4 = c3;                                     // Intercompany / Mayorista / Precios (Planificación) — Amarillo, mismo día, sub-bloque SUPERIOR con borde
+  const c5 = addBusinessDays(c3,2);                 // Distribución Tiendas FQ / Súper (Producto/Tiendas) — Azul Claro, +2 tras Ingresos Tiendas
+  const c6 = addBusinessDays(c5,1);                 // OTN / Traslados / Etiquetas / Microsite / LPN (Planificación) — Salmón, +1 tras Distribución, sub-bloque INFERIOR
+
+  // Ingreso al CD: fecha de input si existe, si no se proyecta 1 día hábil tras OTN (supuesto). Ventana de 3 días hábiles continuos.
+  const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(c6,1);
+  const cdEnd = addBusinessDays(cdStart,2);
+
+  return [
+    bar("importacion","Instrucciones de Importación","Producto","#C00000",c1,c1,"main"),
+    bar("envio_pedido","Envío del pedido a COMEX","Planificación","#29B6F6",c2,c2,"main",true),
+    bar("ingresos_tiendas","Ingresos Tiendas / Ref. Compra","Planificación","#FCE4D6",c3,c3,"main",true),
+    bar("intercompany","Intercompany / Mayorista / Precios","Planificación","#FFFF00",c4,c4,"top",true,true),
+    bar("distribucion","Distribución Tiendas FQ / Súper","Producto/Tiendas","#8EA9DB",c5,c5,"main"),
+    bar("otn","OTN / Traslados / Etiquetas / Microsite / LPN","Planificación","#F4B183",c6,c6,"bottom",true),
+    bar("ingreso_cd","Ingreso Embarque al CD","Logística","#385623",cdStart,cdEnd,"main"),
+  ];
+}
+
+/* =========================================================
+   4. RENDER: GANTT DE UN EMBARQUE
+========================================================= */
+function renderShipmentGantt(sh){
+  const acts = computeActivities(sh);
+  if(acts.length === 0){
+    return `<div class="shipment-block"><div class="empty">Falta la fecha de instrucción de producto para calcular el cronograma.</div></div>`;
+  }
+
+  let minDate = acts[0].start, maxDate = acts[0].end;
+  acts.forEach(a=>{
+    if(a.start < minDate) minDate = a.start;
+    if(a.end > maxDate) maxDate = a.end;
+  });
+  const days = dateRange(minDate, maxDate);
+  const colCount = days.length;
+  const templateCols = `repeat(${colCount}, minmax(30px,1fr))`;
+
+  let headerCells = "";
+  days.forEach(d=>{
+    const cls = ["day-head"];
+    if(isWeekend(d)) cls.push("weekend");
+    if(isHoliday(d)) cls.push("holiday");
+    headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
+  });
+
+  function rowForBars(barsInRow){
+    let cells = "";
+    for(let i=0;i<colCount;i++){
+      const d = days[i];
+      cells += `<div class="row-track ${isWeekend(d)?'weekend-col':''}" style="grid-column:${i+1}/${i+2};"></div>`;
+    }
+    barsInRow.forEach(a=>{
+      const startIdx = Math.round((a.start - minDate)/86400000)+1;
+      const endIdx = Math.round((a.end - minDate)/86400000)+2; // exclusive
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''}" style="grid-column:${startIdx}/${endIdx}; background:${a.color};" title="${a.label} (${a.responsable}) — ${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' al '+fmtDMY(a.end):''}">${escapeHtml(a.label)}</div>`;
+    });
+    return `<div class="gantt-grid" style="grid-template-columns:${templateCols};margin-bottom:4px;">${cells}</div>`;
+  }
+
+  const topRow = acts.filter(a=>a.zone==="top");
+  const mainRow = acts.filter(a=>a.zone==="main");
+  const bottomRow = acts.filter(a=>a.zone==="bottom");
+  const headerRow = `<div class="gantt-grid" style="grid-template-columns:${templateCols};">${headerCells}</div>`;
+
+  // tabla de hitos / leyenda — ordenada por fecha real calculada (coincide 1:1 con las barras del Gantt)
+  const sortedActs = [...acts].sort((a,b)=>a.start-b.start);
+  let legendRows = sortedActs.map(a=>`
+    <tr>
+      <td><span class="sw" style="background:${a.color};"></span></td>
+      <td>${escapeHtml(a.label)}</td>
+      <td>${RESPONSABLE_HORA}</td>
+      <td>${a.responsable}</td>
+      <td>${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' — '+fmtDMY(a.end):''}</td>
+    </tr>`).join("");
+
+  const tipoTagClass = "tag-tipo-" + sh.tipo;
+  const marcaTagClass = "tag-marca " + sh.marca;
+
+  return `
+  <div class="shipment-block">
+    <div class="shipment-header">
+      <span class="${marcaTagClass}">${marcaLabel(sh.marca)}</span>
+      <span class="tag-name">${escapeHtml(sh.nombre)}</span>
+      <span class="${tipoTagClass}">${tipoLabel(sh.tipo)}</span>
+      ${sh.consolidado ? `<span class="tag-consol">${escapeHtml(sh.consolidado)}</span>` : ""}
+      <span class="muted" style="margin-left:auto;font-size:11.5px;">Instr. producto: <b>${fmtDMY(parseISO(sh.fechaInstruccion))}</b></span>
+    </div>
+    <div class="gantt-scroll">
+      ${headerRow}
+      ${topRow.length ? `<div class="zone-caption">Sub-bloque superior</div>${rowForBars(topRow)}` : ""}
+      ${rowForBars(mainRow)}
+      ${bottomRow.length ? `<div class="zone-caption">Sub-bloque inferior</div>${rowForBars(bottomRow)}` : ""}
+    </div>
+    <div style="padding:0 14px 14px 14px;">
+      <table class="legend-table">
+        <thead><tr><th></th><th>Actividad</th><th>Hora límite</th><th>Responsable</th><th>Fecha</th></tr></thead>
+        <tbody>${legendRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* =========================================================
+   5. RENDER: VISTAS POR MARCA
+========================================================= */
+function renderBrandView(marca, containerId){
+  const container = document.getElementById(containerId);
+  const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  if(list.length===0){
+    container.innerHTML = `<div class="empty">No hay embarques de ${marcaLabel(marca)} registrados todavía.</div>`;
+    return;
+  }
+  container.innerHTML = list.map(renderShipmentGantt).join("");
+}
+
+/* =========================================================
+   6. RENDER: VISTA CONSOLIDADA
+========================================================= */
+function getAvailableMonths(){
+  const set = new Set();
+  getShipmentsArray().forEach(s=>{
+    if(s.fechaInstruccion) set.add(s.fechaInstruccion.slice(0,7));
+    computeActivities(s).forEach(a=>{
+      set.add(toISO(a.start).slice(0,7));
+      set.add(toISO(a.end).slice(0,7));
+    });
+  });
+  const arr = Array.from(set).sort();
+  if(arr.length===0){
+    const now = new Date();
+    arr.push(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`);
+  }
+  return arr;
+}
+
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function populateMonthPicker(){
+  const picker = document.getElementById("monthPicker");
+  const months = getAvailableMonths();
+  const prevVal = picker.value;
+  picker.innerHTML = months.map(m=>{
+    const [y,mm] = m.split("-").map(Number);
+    return `<option value="${m}">${MONTH_NAMES[mm-1]} ${y}</option>`;
+  }).join("");
+  if(months.includes(prevVal)) picker.value = prevVal;
+}
+
+function renderConsolidated(){
+  populateMonthPicker();
+  const picker = document.getElementById("monthPicker");
+  const ym = picker.value || getAvailableMonths()[0];
+  const [y,m] = ym.split("-").map(Number);
+  const monthStart = new Date(y, m-1, 1);
+  const monthEnd = new Date(y, m, 0);
+  const days = dateRange(monthStart, monthEnd);
+  const colCount = days.length;
+  const templateCols = `repeat(${colCount}, minmax(26px,1fr))`;
+
+  const rows = [];
+  getShipmentsArray().forEach(s=>{
+    const acts = computeActivities(s);
+    if(acts.length===0) return;
+    const touches = acts.some(a=> a.end >= monthStart && a.start <= monthEnd);
+    if(touches) rows.push({sh:s, acts, cd: acts.find(a=>a.key==="ingreso_cd")});
+  });
+
+  const gridEl = document.getElementById("consolidadoGrid");
+  const emptyEl = document.getElementById("emptyConsolidado");
+  const alertsEl = document.getElementById("overlapAlerts");
+
+  if(rows.length===0){
+    gridEl.innerHTML = "";
+    emptyEl.style.display = "block";
+    alertsEl.innerHTML = "";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  const overlapDates = new Map();
+  rows.forEach(r=>{
+    if(!r.cd) return;
+    dateRange(r.cd.start, r.cd.end).forEach(d=>{
+      if(d < monthStart || d > monthEnd) return;
+      const key = toISO(d);
+      if(!overlapDates.has(key)) overlapDates.set(key, []);
+      overlapDates.get(key).push(`${r.sh.marca} ${r.sh.nombre}`);
+    });
+  });
+  const conflicts = Array.from(overlapDates.entries()).filter(([,names])=>names.length>1);
+  if(conflicts.length>0){
+    alertsEl.innerHTML = `<div class="overlap-alert">⚠️ <b>Traslape detectado en llegada al CD:</b> ` +
+      conflicts.map(([d,names])=>`${fmtDMY(parseISO(d))} → ${names.join(" + ")}`).join(" · ") + `</div>`;
+  } else {
+    alertsEl.innerHTML = `<div class="overlap-alert none">✅ Sin traslapes de llegada al CD para el mes seleccionado.</div>`;
+  }
+
+  let headerCells = `<div class="row-label-col">Embarque</div>`;
+  days.forEach(d=>{
+    const cls = ["day-head"];
+    if(isWeekend(d)) cls.push("weekend");
+    if(isHoliday(d)) cls.push("holiday");
+    headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
+  });
+
+  let html = `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};">${headerCells}</div>`;
+
+  rows.forEach(r=>{
+    let cells = `<div class="row-label-col"><span class="tag-marca ${r.sh.marca}" style="margin-right:6px;font-size:9.5px;padding:2px 6px;">${marcaInitial(r.sh.marca)}</span> ${escapeHtml(r.sh.nombre)}</div>`;
+    for(let i=0;i<colCount;i++){
+      const d = days[i];
+      cells += `<div class="row-track ${isWeekend(d)?'weekend-col':''}" style="grid-column:${i+2}/${i+3};"></div>`;
+    }
+    r.acts.forEach(a=>{
+      const s = a.start < monthStart ? monthStart : a.start;
+      const e = a.end > monthEnd ? monthEnd : a.end;
+      if(e < monthStart || s > monthEnd) return;
+      const startIdx = Math.round((s - monthStart)/86400000) + 2;
+      const endIdx = Math.round((e - monthStart)/86400000) + 3;
+      const isCd = a.key === "ingreso_cd";
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''}" style="grid-column:${startIdx}/${endIdx}; background:${a.color}; ${isCd?'box-shadow: inset 0 0 0 2px #000;':''}" title="${a.label} — ${fmtDMY(a.start)}">${isCd ? "CD" : ""}</div>`;
+    });
+    html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};margin-bottom:3px;">${cells}</div>`;
+  });
+
+  gridEl.innerHTML = html;
+}
+
+/* =========================================================
+   7. RENDER: TABLA DE ENTRADAS (CRUD)
+========================================================= */
+function renderInputsTable(){
+  const tbody = document.getElementById("shipmentsTbody");
+  const emptyEl = document.getElementById("emptyShipments");
+  const list = getShipmentsArray();
+  document.getElementById("countShipments").textContent = `${list.length} embarque(s)`;
+
+  if(list.length===0){
+    tbody.innerHTML = "";
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  tbody.innerHTML = list.map(s=>`
+    <tr>
+      <td><span class="pill badge-marca-${s.marca}">${marcaLabel(s.marca)}</span></td>
+      <td><b>${escapeHtml(s.nombre)}</b></td>
+      <td><span class="pill badge-tipo-${s.tipo}">${tipoLabel(s.tipo)}</span></td>
+      <td>${escapeHtml(s.consolidado||"N/A")}</td>
+      <td>${s.fechaInstruccion ? fmtDMY(parseISO(s.fechaInstruccion)) : "—"}</td>
+      <td>${s.fechaArriboDepco ? fmtDMY(parseISO(s.fechaArriboDepco)) : "—"}</td>
+      <td>${s.fechaArriboCD ? fmtDMY(parseISO(s.fechaArriboCD)) : "—"}</td>
+      <td>
+        <button class="btn small" data-action="edit" data-id="${s.id}">✏️ Editar</button>
+        <button class="btn small danger" data-action="delete" data-id="${s.id}">🗑️ Eliminar</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+/* =========================================================
+   8. EVENTOS: FORMULARIO CRUD (escribe local y/o a Firebase)
+========================================================= */
+function readForm(){
+  return {
+    marca: document.getElementById("f_marca").value,
+    nombre: document.getElementById("f_nombre").value.trim(),
+    tipo: document.getElementById("f_tipo").value,
+    consolidado: document.getElementById("f_consolidado").value.trim(),
+    fechaInstruccion: document.getElementById("f_finstruccion").value,
+    fechaArriboDepco: document.getElementById("f_farribodepco").value,
+    fechaArriboCD: document.getElementById("f_farribocd").value,
+  };
+}
+function clearForm(){
+  document.getElementById("f_marca").value = "ADIDAS";
+  document.getElementById("f_nombre").value = "";
+  document.getElementById("f_tipo").value = "CONSUMO";
+  document.getElementById("f_consolidado").value = "";
+  document.getElementById("f_finstruccion").value = "";
+  document.getElementById("f_farribodepco").value = "";
+  document.getElementById("f_farribocd").value = "";
+  state.editingId = null;
+  document.getElementById("btnAddShipment").textContent = "+ Agregar embarque";
+  document.getElementById("btnCancelEdit").style.display = "none";
+}
+function fillFormForEdit(s){
+  document.getElementById("f_marca").value = s.marca;
+  document.getElementById("f_nombre").value = s.nombre;
+  document.getElementById("f_tipo").value = s.tipo;
+  document.getElementById("f_consolidado").value = s.consolidado||"";
+  document.getElementById("f_finstruccion").value = s.fechaInstruccion||"";
+  document.getElementById("f_farribodepco").value = s.fechaArriboDepco||"";
+  document.getElementById("f_farribocd").value = s.fechaArriboCD||"";
+  state.editingId = s.id;
+  document.getElementById("btnAddShipment").textContent = "💾 Guardar cambios";
+  document.getElementById("btnCancelEdit").style.display = "inline-flex";
+}
+
+function renderAll(){
+  renderInputsTable();
+  renderBrandView("ADIDAS","adidasContainer");
+  renderBrandView("REEBOK","reebokContainer");
+  renderConsolidated();
+  ensureTasksForAllShipments();
+  renderMicroShipmentOptions();
+}
+
+/* =========================================================
+   8.b PERSISTENCIA LOCAL (localStorage) — modo por defecto
+   ---------------------------------------------------------
+   Cuando NO hay Firebase configurado, cada cambio (agregar,
+   editar, eliminar embarque o guardar feriados) se guarda de
+   forma automática en el navegador. Al volver a abrir este
+   mismo archivo .html en el mismo navegador, los datos se
+   recuperan solos — no hace falta hacer nada manualmente.
+
+   Limitaciones a tener en cuenta:
+   - Es POR NAVEGADOR Y POR EQUIPO: si abres el archivo en otra
+     computadora, en otro navegador, o en modo incógnito, no vas
+     a ver estos datos ahí.
+   - Si limpias el caché/historial de navegación de ese navegador,
+     estos datos se borran.
+   - Por eso, para respaldos importantes o para pasar la info a
+     otra persona, usa siempre el botón "Exportar (JSON)".
+========================================================= */
+const LOCAL_STORAGE_KEY = "medeport_gantt_state_v1";
+
+function localStorageSave(){
+  try{
+    const payload = {shipments: state.shipmentsMap, holidays: state.holidays, savedAt: new Date().toISOString()};
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+    return true;
+  }catch(err){
+    console.error("No se pudo guardar en localStorage:", err);
+    return false;
+  }
+}
+function localStorageLoad(){
+  try{
+    const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(err){
+    console.error("No se pudo leer localStorage:", err);
+    return null;
+  }
+}
+
+function showToast(msg, kind){
+  let t = document.getElementById("toastMsg");
+  if(!t){
+    t = document.createElement("div");
+    t.id = "toastMsg";
+    t.style.cssText = "position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:999;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.2);transition:opacity .3s;";
+    document.body.appendChild(t);
+  }
+  t.style.background = kind==="error" ? "#C00000" : "#385623";
+  t.style.color = "#fff";
+  t.textContent = msg;
+  t.style.opacity = "1";
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>{ t.style.opacity="0"; }, 2200);
+}
+
+function saveShipment(id, data){
+  if(cloudMode){
+    shipmentsRef.child(id).set(data); // dispara onValue en todas las pantallas conectadas, incl. la propia
+  } else {
+    state.shipmentsMap[id] = data;
+    renderAll();
+    const ok = localStorageSave();
+    showToast(ok ? "✅ Embarque guardado en este navegador" : "⚠️ No se pudo autoguardar — usa Exportar (JSON)", ok?"ok":"error");
+  }
+}
+function deleteShipment(id){
+  // Los microprocesos siempre viven en localStorage de este navegador (no via Firebase),
+  // así que se eliminan en cascada aquí sin importar el modo de guardado del embarque.
+  microState.items = microState.items.filter(it=> it.shipmentId !== id);
+  microSave();
+  if(cloudMode){
+    shipmentsRef.child(id).remove();
+    renderMicroprocesos();
+  } else {
+    delete state.shipmentsMap[id];
+    renderAll();
+    localStorageSave();
+    showToast("🗑️ Embarque y sus microprocesos eliminados");
+  }
+}
+function saveHolidays(list){
+  if(cloudMode){
+    holidaysRef.set(list);
+  } else {
+    state.holidays = list;
+    renderAll();
+    localStorageSave();
+    showToast("✅ Feriados guardados en este navegador");
+  }
+}
+
+document.getElementById("btnAddShipment").addEventListener("click", ()=>{
+  const data = readForm();
+  if(!data.nombre){ alert("Ingresa el nombre del embarque (ej. PANAMA 48)."); return; }
+  if(!data.fechaInstruccion){ alert("Ingresa la fecha de instrucción de producto."); return; }
+
+  const id = state.editingId || generateId();
+  saveShipment(id, data);
+  clearForm();
+});
+
+document.getElementById("btnCancelEdit").addEventListener("click", clearForm);
+
+document.getElementById("shipmentsTbody").addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-action]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.action==="delete"){
+    if(confirm("¿Eliminar este embarque? Esta acción no se puede deshacer y se reflejará para todos los usuarios conectados.")){
+      deleteShipment(id);
+    }
+  } else if(btn.dataset.action==="edit"){
+    const s = state.shipmentsMap[id];
+    if(s){ fillFormForEdit({...s,id}); window.scrollTo({top:0,behavior:"smooth"}); }
+  }
+});
+
+/* =========================================================
+   9. FERIADOS
+========================================================= */
+document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
+  const raw = document.getElementById("holidaysBox").value;
+  const lines = raw.split("\n").map(l=>l.trim()).filter(Boolean);
+  const valid = lines.filter(l=>/^\d{4}-\d{2}-\d{2}$/.test(l));
+  if(valid.length !== lines.length){
+    alert("Algunas fechas no tienen el formato AAAA-MM-DD y fueron ignoradas.");
+  }
+  saveHolidays(valid);
+});
+
+/* =========================================================
+   10. NAVEGACIÓN DE PESTAÑAS
+========================================================= */
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("view-"+tab.dataset.view).classList.add("active");
+    if(tab.dataset.view==="adidas") renderBrandView("ADIDAS","adidasContainer");
+    if(tab.dataset.view==="reebok") renderBrandView("REEBOK","reebokContainer");
+    if(tab.dataset.view==="consolidado") renderConsolidated();
+    if(tab.dataset.view==="microprocesos") renderMicroprocesos();
+  });
+});
+
+document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
+
+/* =========================================================
+   11. EXPORTAR / IMPORTAR / IMPRIMIR
+========================================================= */
+document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+
+document.getElementById("btnSaveNow").addEventListener("click", ()=>{
+  if(cloudMode){
+    showToast("☁️ En modo colaborativo cada cambio ya se guarda solo en la nube");
+    return;
+  }
+  const ok = localStorageSave();
+  showToast(ok ? "✅ Todo guardado en este navegador" : "⚠️ No se pudo guardar — usa Exportar (JSON) como respaldo", ok?"ok":"error");
+});
+
+document.getElementById("btnExport").addEventListener("click", ()=>{
+  const payload = {shipments: state.shipmentsMap, holidays: state.holidays};
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `medeport-embarques-${toISO(new Date())}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("btnImport").addEventListener("click", ()=>{
+  document.getElementById("fileImport").click();
+});
+document.getElementById("fileImport").addEventListener("change",(e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const data = JSON.parse(evt.target.result);
+      if(data.shipments && typeof data.shipments === "object"){
+        const holidays = Array.isArray(data.holidays) ? data.holidays : [];
+        if(cloudMode){
+          shipmentsRef.set(data.shipments);
+          holidaysRef.set(holidays);
+        } else {
+          state.shipmentsMap = data.shipments;
+          state.holidays = holidays;
+          document.getElementById("holidaysBox").value = state.holidays.join("\n");
+          renderAll();
+          localStorageSave();
+        }
+        alert("Datos importados correctamente.");
+      } else {
+        alert("El archivo no tiene el formato esperado.");
+      }
+    }catch(err){
+      alert("No se pudo leer el archivo JSON: "+err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+
+
+
+/* =========================================================
+   MICROPROCESOS Y TAREAS (v3) — generados AUTOMÁTICAMENTE
+   por cada embarque de la Tabla de Entradas
+   ---------------------------------------------------------
+   Plantillas base (solo orden + actividad, sin status de
+   ejemplo) tomadas de MICROPROCESO_EMBARQUES.xlsx:
+     CONSUMO -> "PAN XX MARCA CONSUMO"            (doble pista ADIDAS/REEBOK)
+     DEPCO   -> "PAN XX MARCA DEPCO-CONSOLIDADO"  (pista única)
+     CONSOLIDADO_OTN -> "CONS X MES MARCA"        (pista única)
+     INTERCOMPANY (general, no ligado a un embarque) -> "X INTERCOMPANY-MARCA"
+
+   Cada vez que se crea un embarque nuevo en la Tabla de Entradas,
+   se generan automáticamente sus tareas según el tipo. Si el
+   embarque es ADIDAS o REEBOK (no ambas), solo se muestran las
+   columnas de esa marca. Si es "ADI & RBK", se muestran ambas.
+   Todo se guarda en localStorage bajo medeport_microprocesos_v3.
+========================================================= */
+const TASK_TEMPLATES = {"CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}], "DEPCO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos para creación de OC"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC (LPN) a producto"}, {"ord": 14, "act": "Subir a EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 16, "act": "*Envío del pedido a COMEX"}, {"ord": 17, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 18, "act": "*Ingresos MAYORISTA"}, {"ord": 19, "act": "*Elaboración archivos Intercomapny"}, {"ord": 20, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 21, "act": "*Carga precio PVP"}, {"ord": 22, "act": "*Carga precio Intercompany"}, {"ord": 23, "act": "*Carga precio Mayor"}, {"ord": 24, "act": "*Carga precio MARKETING"}, {"ord": 25, "act": "Respuesta de distribución de tiendas"}, {"ord": 26, "act": "Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"}, {"ord": 27, "act": "Elaboración Plantilla OCA"}, {"ord": 28, "act": "Crear y liberar OCA"}, {"ord": 29, "act": "Elaboración Plantilla OCI"}, {"ord": 30, "act": "Crear números OCI en SAP"}, {"ord": 31, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 32, "act": "Enviar números OCIS a COMEX"}, {"ord": 33, "act": "Respuesta comex: \"Se encuentra cargado en SAP los embarques\""}, {"ord": 34, "act": "Enviar LPN Embarque"}, {"ord": 35, "act": "Elaboración Plantilla para OTN (consolidado)"}, {"ord": 36, "act": "Elaboración Plantilla OTN"}, {"ord": 37, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 38, "act": "Crear número de OTN"}, {"ord": 39, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 40, "act": "Enviar número de OTN a COMEX"}, {"ord": 41, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 42, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 43, "act": "Aprobación diferencia por finanzas"}, {"ord": 44, "act": "Crear números de traslados en SAP"}, {"ord": 45, "act": "Enviar números de traslados a CD por correo"}, {"ord": 46, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 47, "act": "Solicitar plantilla Microsite"}, {"ord": 48, "act": "Llena plantilla Microsite"}, {"ord": 49, "act": "Cargar plantilla Microsite por DM"}, {"ord": 50, "act": "LPN Consolidado"}], "CONSOLIDADO_OTN": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 3, "act": "*Envío de pedido a comex"}, {"ord": 4, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 5, "act": "*Ingresos MAYORISTA"}, {"ord": 6, "act": "*Elaboración archivos Intercomapny"}, {"ord": 7, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 8, "act": "*Carga precio PVP"}, {"ord": 9, "act": "*Carga precio Intercompany"}, {"ord": 10, "act": "*Carga precio Mayor"}, {"ord": 11, "act": "*Carga precio MKT"}, {"ord": 12, "act": "Respuesta de distribución de tiendas"}, {"ord": 13, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 14, "act": "Elaboración Plantilla OTN"}, {"ord": 15, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 16, "act": "Crear número de OTN"}, {"ord": 17, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 18, "act": "Enviar número de OTN a COMEX"}, {"ord": 19, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 20, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 21, "act": "Aprobación diferencia por finanzas"}, {"ord": 22, "act": "Crear números de traslados en SAP"}, {"ord": 23, "act": "Enviar números de traslados a CD por correo"}, {"ord": 24, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 25, "act": "Solicitar plantilla Microsite"}, {"ord": 26, "act": "Llena plantilla Microsite"}, {"ord": 27, "act": "Cargar plantilla Microsite por DM"}, {"ord": 28, "act": "LPN"}], "INTERCOMPANY": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar Archivos Intercompany:"}, {"ord": 3, "act": "*Carga precio PVP"}, {"ord": 4, "act": "*Carga precio Intercompany"}, {"ord": 5, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 6, "act": "Solicitar plantilla Microsite"}, {"ord": 7, "act": "Llena plantilla Microsite"}, {"ord": 8, "act": "Cargar plantilla Microsite por DM"}, {"ord": 9, "act": "Catalogar"}]};
+
+const MICRO_STORAGE_KEY = "medeport_microprocesos_v3";
+const INTERCOMPANY_KEY = "__INTERCOMPANY__";
+
+const microState = {
+  items: [],
+  selectedKey: INTERCOMPANY_KEY, // id de embarque, o INTERCOMPANY_KEY para la lista general
+  statusFilter: "TODOS",
+  search: "",
+  editingId: null
+};
+
+function microLoad(){
+  try{
+    const raw = window.localStorage.getItem(MICRO_STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)){
+        microState.items = parsed;
+        if(parsed.length>0) return;
+      }
+    }
+  }catch(err){
+    console.error("No se pudo leer microprocesos de localStorage:", err);
+  }
+  // Primera vez: sembramos solo la lista general de Intercompany.
+  microState.items = TASK_TEMPLATES.INTERCOMPANY.map(t=>({
+    id: generateId(), shipmentId: null, proc: "INTERCOMPANY", trackMode: "SINGLE",
+    ord: t.ord, act: t.act, status: null, fecha: null, obs: null
+  }));
+  microSave();
+}
+function microSave(){
+  try{
+    window.localStorage.setItem(MICRO_STORAGE_KEY, JSON.stringify(microState.items));
+    return true;
+  }catch(err){
+    console.error("No se pudo guardar microprocesos en localStorage:", err);
+    return false;
+  }
+}
+
+/* Determina cómo debe verse el checklist de un embarque según su tipo y marca */
+function trackModeFor(tipo, marca){
+  if(tipo !== "CONSUMO") return "SINGLE"; // DEPCO y CONSOLIDADO_OTN no distinguen marca en el Excel
+  if(marca === "ADI_RBK") return "DUAL";
+  if(marca === "REEBOK") return "REEBOK_ONLY";
+  return "ADIDAS_ONLY";
+}
+
+function blankTaskFields(trackMode){
+  if(trackMode === "DUAL") return {adidas_status:null, adidas_fecha:null, adidas_obs:null, reebok_status:null, reebok_fecha:null, reebok_obs:null};
+  if(trackMode === "ADIDAS_ONLY") return {adidas_status:null, adidas_fecha:null, adidas_obs:null};
+  if(trackMode === "REEBOK_ONLY") return {reebok_status:null, reebok_fecha:null, reebok_obs:null};
+  return {status:null, fecha:null, obs:null};
+}
+
+function generateTasksForShipment(shipment){
+  const template = TASK_TEMPLATES[shipment.tipo] || [];
+  const trackMode = trackModeFor(shipment.tipo, shipment.marca);
+  return template.map(t=>({
+    id: generateId(), shipmentId: shipment.id, proc: shipment.tipo, trackMode,
+    ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
+  }));
+}
+
+/* Crea automáticamente las tareas de cualquier embarque que aún no las tenga.
+   Se llama en cada renderAll(), así cubre altas locales, en la nube, o por
+   importación de JSON, sin necesidad de enganchar cada punto de escritura. */
+function ensureTasksForAllShipments(){
+  let changed = false;
+  const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
+  Object.keys(state.shipmentsMap).forEach(id=>{
+    if(existingShipmentIds.has(id)) return;
+    const sh = {...state.shipmentsMap[id], id};
+    if(!sh.tipo || !TASK_TEMPLATES[sh.tipo]) return;
+    microState.items.push(...generateTasksForShipment(sh));
+    changed = true;
+  });
+  if(changed) microSave();
+}
+
+function regenerateTasksForShipment(shipmentId){
+  const sh = {...state.shipmentsMap[shipmentId], id: shipmentId};
+  microState.items = microState.items.filter(it=> it.shipmentId !== shipmentId);
+  microState.items.push(...generateTasksForShipment(sh));
+  microSave();
+}
+
+function normStatus(v){
+  if(v === "COMPLETO" || v === "N/A") return v;
+  return "PENDIENTE";
+}
+function statusClass(v){
+  const n = normStatus(v);
+  return n === "N/A" ? "status-N_A" : ("status-" + n);
+}
+function isItemComplete(item){
+  if(item.trackMode === "DUAL") return item.adidas_status==="COMPLETO" && item.reebok_status==="COMPLETO";
+  if(item.trackMode === "ADIDAS_ONLY") return item.adidas_status==="COMPLETO";
+  if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO";
+  return item.status === "COMPLETO";
+}
+
+function renderMicroShipmentOptions(){
+  const sel = document.getElementById("microShipmentSelect");
+  if(!sel) return;
+  const prev = microState.selectedKey;
+  const list = getShipmentsArray().filter(s=> TASK_TEMPLATES[s.tipo]).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  let html = `<option value="${INTERCOMPANY_KEY}">🔗 Intercompany (general, no ligado a un embarque)</option>`;
+  html += list.map(s=> `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}</option>`).join("");
+  sel.innerHTML = html;
+  const stillExists = prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev);
+  sel.value = stillExists ? prev : INTERCOMPANY_KEY;
+  microState.selectedKey = sel.value;
+}
+
+function currentSelectionItems(){
+  if(microState.selectedKey === INTERCOMPANY_KEY){
+    return microState.items.filter(it=> it.proc==="INTERCOMPANY" && !it.shipmentId);
+  }
+  return microState.items.filter(it=> it.shipmentId === microState.selectedKey);
+}
+
+function renderMicroThead(trackMode){
+  const thead = document.getElementById("microThead");
+  if(trackMode === "DUAL"){
+    thead.innerHTML = `
+      <tr>
+        <th rowspan="2">Orden</th>
+        <th rowspan="2">Actividad</th>
+        <th colspan="3" class="brand-col-head ADIDAS">ADIDAS</th>
+        <th colspan="3" class="brand-col-head REEBOK">REEBOK</th>
+        <th rowspan="2">Acciones</th>
+      </tr>
+      <tr>
+        <th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th>
+        <th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th>
+      </tr>`;
+  } else if(trackMode === "ADIDAS_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th>Acciones</th></tr>`;
+  } else if(trackMode === "REEBOK_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th><th>Acciones</th></tr>`;
+  } else {
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th>Status</th><th>Fecha</th><th>Obs</th><th>Acciones</th></tr>`;
+  }
+}
+
+function statusSelectHtml(id, field, value){
+  const v = value || "";
+  return `<select class="inline-status" data-id="${id}" data-field="${field}">
+    <option value="" ${v===""?"selected":""}>PENDIENTE</option>
+    <option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option>
+    <option value="N/A" ${v==="N/A"?"selected":""}>N/A</option>
+  </select>`;
+}
+function dateInputHtml(id, field, value){
+  const v = /^\d{4}-\d{2}-\d{2}$/.test(value||"") ? value : "";
+  return `<input type="date" class="inline-fecha" data-id="${id}" data-field="${field}" value="${v}">`;
+}
+function obsInputHtml(id, field, value){
+  return `<input type="text" class="inline-obs" data-id="${id}" data-field="${field}" value="${escapeHtml(value||"")}">`;
+}
+
+function renderMicroMismatchWarning(sh, items){
+  const el = document.getElementById("microMismatchWarning");
+  if(!sh || items.length===0){ el.style.display="none"; return; }
+  const expected = trackModeFor(sh.tipo, sh.marca);
+  const actual = items[0].trackMode;
+  const procMismatch = items[0].proc !== sh.tipo;
+  if(actual !== expected || procMismatch){
+    el.style.display = "block";
+    el.innerHTML = `⚠️ Este embarque cambió de tipo o marca y sus tareas ya no coinciden con el flujo actual. Usa <b>🔄 Regenerar desde plantilla</b> para actualizarlas (se perderá el progreso registrado).`;
+  } else {
+    el.style.display = "none";
+  }
+}
+
+function renderMicroprocesos(){
+  const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
+  const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
+
+  let items = currentSelectionItems();
+  renderMicroMismatchWarning(sh, items);
+
+  const trackMode = items.length>0 ? items[0].trackMode : (sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE");
+  renderMicroThead(trackMode);
+
+  const term = microState.search.trim().toLowerCase();
+  const filtered = items.filter(it=>{
+    if(microState.statusFilter !== "TODOS"){
+      const statuses = trackMode==="DUAL" ? [it.adidas_status, it.reebok_status]
+        : trackMode==="ADIDAS_ONLY" ? [it.adidas_status]
+        : trackMode==="REEBOK_ONLY" ? [it.reebok_status]
+        : [it.status];
+      if(!statuses.some(s=> normStatus(s)===microState.statusFilter)) return false;
+    }
+    if(term){
+      const haystack = [it.act, it.obs, it.adidas_obs, it.reebok_obs].filter(Boolean).join(" ").toLowerCase();
+      if(haystack.indexOf(term) === -1) return false;
+    }
+    return true;
+  }).sort((a,b)=> (Number(a.ord)||0) - (Number(b.ord)||0));
+
+  const tbody = document.getElementById("microTbody");
+  const emptyEl = document.getElementById("emptyMicro");
+  document.getElementById("microCount").textContent = filtered.length;
+  document.getElementById("microDoneCount").textContent = filtered.filter(isItemComplete).length;
+
+  if(filtered.length===0){
+    tbody.innerHTML = "";
+    emptyEl.style.display = "block";
+    return;
+  }
+  emptyEl.style.display = "none";
+
+  tbody.innerHTML = filtered.map(it=>{
+    const orderCell = `<td><b>${escapeHtml(String(it.ord!=null?it.ord:""))}</b></td><td class="wrap">${escapeHtml(it.act||"")}</td>`;
+    const actionsCell = `<td style="white-space:nowrap;">
+        <button class="btn small" data-maction="edit" data-id="${it.id}">✏️</button>
+        <button class="btn small danger" data-maction="delete" data-id="${it.id}">🗑️</button>
+      </td>`;
+    if(trackMode === "DUAL"){
+      return `<tr>${orderCell}
+        <td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td>
+        <td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td>
+        <td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>
+        <td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td>
+        <td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td>
+        <td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>
+        ${actionsCell}</tr>`;
+    }
+    if(trackMode === "ADIDAS_ONLY"){
+      return `<tr>${orderCell}
+        <td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td>
+        <td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td>
+        <td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>
+        ${actionsCell}</tr>`;
+    }
+    if(trackMode === "REEBOK_ONLY"){
+      return `<tr>${orderCell}
+        <td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td>
+        <td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td>
+        <td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>
+        ${actionsCell}</tr>`;
+    }
+    return `<tr>${orderCell}
+      <td>${statusSelectHtml(it.id,"status",it.status)}</td>
+      <td>${dateInputHtml(it.id,"fecha",it.fecha)}</td>
+      <td>${obsInputHtml(it.id,"obs",it.obs)}</td>
+      ${actionsCell}</tr>`;
+  }).join("");
+}
+
+document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{
+  microState.selectedKey = e.target.value;
+  renderMicroprocesos();
+});
+document.getElementById("microStatusFilter").addEventListener("change",(e)=>{
+  microState.statusFilter = e.target.value;
+  renderMicroprocesos();
+});
+document.getElementById("microSearch").addEventListener("input",(e)=>{
+  microState.search = e.target.value;
+  renderMicroprocesos();
+});
+
+/* Edición en línea: status (select), fecha (date), obs (texto) */
+document.getElementById("microTbody").addEventListener("change",(e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
+  const id = el.dataset.id, field = el.dataset.field;
+  const item = microState.items.find(it=>it.id===id);
+  if(!item) return;
+  item[field] = el.value || null;
+  microSave();
+  if(el.classList.contains("inline-status")) renderMicroprocesos(); else showToast("✅ Guardado");
+});
+document.getElementById("microTbody").addEventListener("blur",(e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-obs")) return;
+  const id = el.dataset.id, field = el.dataset.field;
+  const item = microState.items.find(it=>it.id===id);
+  if(!item) return;
+  item[field] = el.value.trim() || null;
+  microSave();
+}, true);
+
+document.getElementById("microTbody").addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-maction]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.maction==="delete"){
+    if(confirm("¿Eliminar esta actividad? Esta accion no se puede deshacer.")){
+      microState.items = microState.items.filter(it=>it.id!==id);
+      microSave();
+      renderMicroprocesos();
+      showToast("🗑️ Actividad eliminada");
+    }
+  } else if(btn.dataset.maction==="edit"){
+    const item = microState.items.find(it=>it.id===id);
+    if(item) openMicroModal(item);
+  }
+});
+
+function toggleModalTracks(trackMode){
+  document.getElementById("m_singleTrackWrap").style.display = trackMode==="SINGLE" ? "block" : "none";
+  document.getElementById("m_adidasWrap").style.display = (trackMode==="DUAL"||trackMode==="ADIDAS_ONLY") ? "block" : "none";
+  document.getElementById("m_reebokWrap").style.display = (trackMode==="DUAL"||trackMode==="REEBOK_ONLY") ? "block" : "none";
+}
+
+function currentContextTrackMode(){
+  const items = currentSelectionItems();
+  if(items.length>0) return items[0].trackMode;
+  if(microState.selectedKey === INTERCOMPANY_KEY) return "SINGLE";
+  const sh = state.shipmentsMap[microState.selectedKey];
+  return sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE";
+}
+
+function openMicroModal(item){
+  microState.editingId = item ? item.id : null;
+  document.getElementById("microModalTitle").textContent = item ? "✏️ Editar Actividad" : "+ Agregar Actividad";
+  document.getElementById("m_ord").value = item && item.ord!=null ? item.ord : "";
+  document.getElementById("m_act").value = item ? (item.act||"") : "";
+
+  const trackMode = item ? item.trackMode : currentContextTrackMode();
+
+  document.getElementById("m_status").value = item ? (item.status||"") : "";
+  document.getElementById("m_fecha").value = item && /^\d{4}-\d{2}-\d{2}$/.test(item.fecha||"") ? item.fecha : "";
+  document.getElementById("m_obs").value = item ? (item.obs||"") : "";
+
+  document.getElementById("m_adidas_status").value = item ? (item.adidas_status||"") : "";
+  document.getElementById("m_adidas_fecha").value = item && /^\d{4}-\d{2}-\d{2}$/.test(item.adidas_fecha||"") ? item.adidas_fecha : "";
+  document.getElementById("m_adidas_obs").value = item ? (item.adidas_obs||"") : "";
+  document.getElementById("m_reebok_status").value = item ? (item.reebok_status||"") : "";
+  document.getElementById("m_reebok_fecha").value = item && /^\d{4}-\d{2}-\d{2}$/.test(item.reebok_fecha||"") ? item.reebok_fecha : "";
+  document.getElementById("m_reebok_obs").value = item ? (item.reebok_obs||"") : "";
+
+  toggleModalTracks(trackMode);
+  document.getElementById("microModal").dataset.trackMode = trackMode;
+  document.getElementById("microModal").classList.add("open");
+}
+function closeMicroModal(){
+  document.getElementById("microModal").classList.remove("open");
+  microState.editingId = null;
+}
+
+document.getElementById("btnAddMicro").addEventListener("click", ()=> openMicroModal(null));
+document.getElementById("btnMicroCancel").addEventListener("click", closeMicroModal);
+document.getElementById("microModal").addEventListener("click",(e)=>{
+  if(e.target.id==="microModal") closeMicroModal();
+});
+
+document.getElementById("btnMicroSave").addEventListener("click", ()=>{
+  const act = document.getElementById("m_act").value.trim();
+  if(!act){ alert("Ingresa la actividad."); return; }
+  const trackMode = document.getElementById("microModal").dataset.trackMode || currentContextTrackMode();
+  const ordRaw = document.getElementById("m_ord").value;
+  const base = {
+    proc: microState.selectedKey===INTERCOMPANY_KEY ? "INTERCOMPANY" : (state.shipmentsMap[microState.selectedKey]||{}).tipo,
+    shipmentId: microState.selectedKey===INTERCOMPANY_KEY ? null : microState.selectedKey,
+    trackMode,
+    ord: ordRaw === "" ? null : Number(ordRaw),
+    act
+  };
+  let fields = {};
+  if(trackMode==="DUAL"){
+    fields = {
+      adidas_status: document.getElementById("m_adidas_status").value || null,
+      adidas_fecha: document.getElementById("m_adidas_fecha").value || null,
+      adidas_obs: document.getElementById("m_adidas_obs").value.trim() || null,
+      reebok_status: document.getElementById("m_reebok_status").value || null,
+      reebok_fecha: document.getElementById("m_reebok_fecha").value || null,
+      reebok_obs: document.getElementById("m_reebok_obs").value.trim() || null,
+    };
+  } else if(trackMode==="ADIDAS_ONLY"){
+    fields = {
+      adidas_status: document.getElementById("m_adidas_status").value || null,
+      adidas_fecha: document.getElementById("m_adidas_fecha").value || null,
+      adidas_obs: document.getElementById("m_adidas_obs").value.trim() || null,
+    };
+  } else if(trackMode==="REEBOK_ONLY"){
+    fields = {
+      reebok_status: document.getElementById("m_reebok_status").value || null,
+      reebok_fecha: document.getElementById("m_reebok_fecha").value || null,
+      reebok_obs: document.getElementById("m_reebok_obs").value.trim() || null,
+    };
+  } else {
+    fields = {
+      status: document.getElementById("m_status").value || null,
+      fecha: document.getElementById("m_fecha").value || null,
+      obs: document.getElementById("m_obs").value.trim() || null,
+    };
+  }
+  const data = {...base, ...fields};
+
+  if(microState.editingId){
+    const idx = microState.items.findIndex(it=>it.id===microState.editingId);
+    if(idx>-1) microState.items[idx] = {id: microState.editingId, ...data};
+  } else {
+    microState.items.push({id: generateId(), ...data});
+  }
+  microSave();
+  closeMicroModal();
+  renderMicroprocesos();
+  showToast("✅ Actividad guardada");
+});
+
+document.getElementById("btnRegenMicro").addEventListener("click", ()=>{
+  if(microState.selectedKey === INTERCOMPANY_KEY){
+    if(confirm("¿Regenerar la lista general de Intercompany a sus valores predeterminados? Se perderá el progreso registrado.")){
+      microState.items = microState.items.filter(it=> !(it.proc==="INTERCOMPANY" && !it.shipmentId));
+      microState.items.push(...TASK_TEMPLATES.INTERCOMPANY.map(t=>({
+        id: generateId(), shipmentId: null, proc: "INTERCOMPANY", trackMode: "SINGLE",
+        ord: t.ord, act: t.act, status: null, fecha: null, obs: null
+      })));
+      microSave();
+      renderMicroprocesos();
+      showToast("↺ Intercompany regenerado desde plantilla");
+    }
+    return;
+  }
+  const sh = state.shipmentsMap[microState.selectedKey];
+  if(!sh){ showToast("⚠️ Selecciona un embarque válido", "error"); return; }
+  if(confirm(`¿Regenerar las tareas de "${sh.nombre}" según la plantilla de ${tipoLabel(sh.tipo)}? Se perderá el progreso registrado para este embarque.`)){
+    regenerateTasksForShipment(microState.selectedKey);
+    renderMicroprocesos();
+    showToast("↺ Tareas regeneradas desde la plantilla");
+  }
+});
+
+microLoad();
+
+
+
+
+
+
+/* =========================================================
+   12. DATOS DE EJEMPLO (solo si no hay Firebase / no hay datos)
+========================================================= */
+function seedExampleIfEmpty(){
+  if(Object.keys(state.shipmentsMap).length > 0) return;
+  const today = new Date();
+  const iso = (d)=>toISO(d);
+  const seed = {
+    [generateId()]: {marca:"ADIDAS", nombre:"PANAMA 46", tipo:"CONSUMO", consolidado:"CONSOLIDADO 1",
+      fechaInstruccion: iso(new Date(today.getFullYear(), today.getMonth(), 3)), fechaArriboDepco:"", fechaArriboCD:""},
+    [generateId()]: {marca:"ADIDAS", nombre:"PANAMA 48", tipo:"DEPCO", consolidado:"N/A",
+      fechaInstruccion: iso(new Date(today.getFullYear(), today.getMonth(), 5)), fechaArriboDepco:"", fechaArriboCD:""},
+    [generateId()]: {marca:"REEBOK", nombre:"PANAMA 50", tipo:"CONSUMO", consolidado:"CONSOLIDADO 2",
+      fechaInstruccion: iso(new Date(today.getFullYear(), today.getMonth(), 4)), fechaArriboDepco:"", fechaArriboCD:""},
+  };
+  if(cloudMode){
+    shipmentsRef.set(seed);
+  } else {
+    state.shipmentsMap = seed;
+  }
+}
+
+/* =========================================================
+   13. INICIALIZACIÓN
+========================================================= */
+initFirebase();
+if(!cloudMode){
+  // Modo local: intenta recuperar lo último guardado en este navegador
+  const saved = localStorageLoad();
+  if(saved && saved.shipments && Object.keys(saved.shipments).length > 0){
+    state.shipmentsMap = saved.shipments;
+    state.holidays = Array.isArray(saved.holidays) ? saved.holidays : [];
+    document.getElementById("holidaysBox").value = state.holidays.join("\n");
+  } else {
+    seedExampleIfEmpty();
+    localStorageSave();
+  }
+  renderAll();
+}
+// Si cloudMode=true, el primer renderAll() ocurre automáticamente
+// cuando llega el primer snapshot de shipmentsRef.on('value', ...).
+// Sembramos datos de ejemplo solo tras confirmar que la nube está vacía:
+if(cloudMode){
+  shipmentsRef.once("value").then(snap=>{
+    if(!snap.exists()) seedExampleIfEmpty();
+  });
+}
+
+})();
+</script>
+</body>
+</html>
