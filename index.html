@@ -1093,6 +1093,7 @@ function renderAll(){
   renderConsolidated();
   ensureTasksForAllShipments();
   renderMicroShipmentOptions();
+  renderResumen();
 }
 function showToast(msg, kind){
   let t = document.getElementById("toastMsg");
@@ -1189,7 +1190,7 @@ document.getElementById("btnPrint").addEventListener("click", ()=> window.print(
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
-  "DEPCO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos para creación de OC"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC (LPN) a producto"}, {"ord": 14, "act": "Subir a EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 16, "act": "*Envío del pedido a COMEX"}, {"ord": 17, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 18, "act": "*Ingresos MAYORISTA"}, {"ord": 19, "act": "*Elaboración archivos Intercomapny"}, {"ord": 20, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 21, "act": "*Carga precio PVP"}, {"ord": 22, "act": "*Carga precio Intercompany"}, {"ord": 23, "act": "*Carga precio Mayor"}, {"ord": 24, "act": "*Carga precio MARKETING"}, {"ord": 25, "act": "Respuesta de distribución de tiendas"}, {"ord": 26, "act": "Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"}, {"ord": 27, "act": "Elaboración Plantilla OCA"}, {"ord": 28, "act": "Crear y liberar OCA"}, {"ord": 29, "act": "Elaboración Plantilla OCI"}, {"ord": 30, "act": "Crear números OCI en SAP"}, {"ord": 31, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 32, "act": "Enviar números OCIS a COMEX"}, {"ord": 33, "act": "Respuesta comex: \"Se encuentra cargado en SAP los embarques\""}, {"ord": 34, "act": "Enviar LPN Embarque"}, {"ord": 35, "act": "Elaboración Plantilla para OTN (consolidado)"}, {"ord": 36, "act": "Elaboración Plantilla OTN"}, {"ord": 37, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 38, "act": "Crear número de OTN"}, {"ord": 39, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 40, "act": "Enviar número de OTN a COMEX"}, {"ord": 41, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 42, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 43, "act": "Aprobación diferencia por finanzas"}, {"ord": 44, "act": "Crear números de traslados en SAP"}, {"ord": 45, "act": "Enviar números de traslados a CD por correo"}, {"ord": 46, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 47, "act": "Solicitar plantilla Microsite"}, {"ord": 48, "act": "Llena plantilla Microsite"}, {"ord": 49, "act": "Cargar plantilla Microsite por DM"}, {"ord": 50, "act": "LPN Consolidado"}],
+  "DEPCO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos para creación de OC"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC (LPN) a producto"}, {"ord": 14, "act": "Subir a EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 16, "act": "*Envío del pedido a COMEX"}, {"ord": 17, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 18, "act": "*Ingresos MAYORISTA"}, {"ord": 19, "act": "*Elaboración archivos Intercomapny"}, {"ord": 20, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 21, "act": "*Carga precio PVP"}, {"ord": 22, "act": "*Carga precio Intercompany"}, {"ord": 23, "act": "*Carga precio Mayor"}, {"ord": 24, "act": "*Carga precio MARKETING"}, {"label": 25, "act": "Respuesta de distribución de tiendas"}, {"ord": 26, "act": "Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"}, {"ord": 27, "act": "Elaboración Plantilla OCA"}, {"ord": 28, "act": "Crear y liberar OCA"}, {"ord": 29, "act": "Elaboración Plantilla OCI"}, {"ord": 30, "act": "Crear números OCI en SAP"}, {"ord": 31, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 32, "act": "Enviar números OCIS a COMEX"}, {"ord": 33, "act": "Respuesta comex: \"Se encuentra cargado en SAP los embarques\""}, {"ord": 34, "act": "Enviar LPN Embarque"}, {"ord": 35, "act": "Elaboración Plantilla para OTN (consolidado)"}, {"ord": 36, "act": "Elaboración Plantilla OTN"}, {"ord": 37, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 38, "act": "Crear número de OTN"}, {"ord": 39, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 40, "act": "Enviar número de OTN a COMEX"}, {"ord": 41, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 42, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 43, "act": "Aprobación diferencia por finanzas"}, {"ord": 44, "act": "Crear números de traslados en SAP"}, {"ord": 45, "act": "Enviar números de traslados a CD por correo"}, {"ord": 46, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 47, "act": "Solicitar plantilla Microsite"}, {"ord": 48, "act": "Llena plantilla Microsite"}, {"ord": 49, "act": "Cargar plantilla Microsite por DM"}, {"ord": 50, "act": "LPN Consolidado"}],
   "CONSOLIDADO_OTN": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 3, "act": "*Envío de pedido a comex"}, {"ord": 4, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 5, "act": "*Ingresos MAYORISTA"}, {"ord": 6, "act": "*Elaboración archivos Intercomapny"}, {"ord": 7, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 8, "act": "*Carga precio PVP"}, {"ord": 9, "act": "*Carga precio Intercompany"}, {"ord": 10, "act": "*Carga precio Mayor"}, {"ord": 11, "act": "*Carga precio MKT"}, {"ord": 12, "act": "Respuesta de distribución de tiendas"}, {"ord": 13, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 14, "act": "Elaboración Plantilla OTN"}, {"ord": 15, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 16, "act": "Crear número de OTN"}, {"ord": 17, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 18, "act": "Enviar número de OTN a COMEX"}, {"ord": 19, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 20, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 21, "act": "Aprobación diferencia por finanzas"}, {"ord": 22, "act": "Crear números de traslados en SAP"}, {"ord": 23, "act": "Enviar números de traslados a CD por correo"}, {"ord": 24, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 25, "act": "Solicitar plantilla Microsite"}, {"ord": 26, "act": "Llena plantilla Microsite"}, {"ord": 27, "act": "Cargar plantilla Microsite por DM"}, {"ord": 28, "act": "LPN"}],
   "INTERCOMPANY": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar Archivos Intercompany:"}, {"ord": 3, "act": "*Carga precio PVP"}, {"ord": 4, "act": "*Carga precio Intercompany"}, {"ord": 5, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 6, "act": "Solicitar plantilla Microsite"}, {"ord": 7, "act": "Llena plantilla Microsite"}, {"ord": 8, "act": "Cargar plantilla Microsite por DM"}, {"ord": 9, "act": "Catalogar"}]
 };
@@ -1287,6 +1288,7 @@ function renderMicroprocesos(){
   const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
   let items = currentSelectionItems();
   const trackMode = items.length>0 ? items[0].trackMode : (sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE");
+  renderMicro发挥 = null;
   renderMicroThead(trackMode);
   const term = microState.search.trim().toLowerCase();
   const filtered = items.filter(it=>{
@@ -1402,7 +1404,7 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 });
 
 /* =========================================================
-   9. HOJA DE RESÚMENES (ESTRUCTURA JERÁRQUICA SINTETIZADA)
+   9. HOJA DE RESÚMENES (CONEXIÓN AUTOMÁTICA CON TABLA DE ENTRADAS)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_COLUMNS = ["MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP","EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA","TRANS-EMELEC","TRANS","DEPSI","DEPCO"];
@@ -1454,8 +1456,8 @@ function resolveGrupo(raw){
 }
 function resolveMarca(raw){
   const key = normTxt(raw);
-  if(key==="2" || key.indexOf("ADIDAS")>-1) return "ADIDAS";
-  if(key==="1" || key.indexOf("REEBOK")>-1) return "REEBOK";
+  if(key==="2" || key==="002" || key.indexOf("ADIDAS")>-1) return "ADIDAS";
+  if(key==="1" || key==="004" || key.indexOf("REEBOK")>-1) return "REEBOK";
   return key || "ADIDAS";
 }
 function blankChannels(){
@@ -1470,6 +1472,18 @@ function resumenSave(){
     resumenRef.set(resumenState.months);
   }
 }
+
+// Búsqueda del embarque en la Tabla de Entradas
+function findShipmentInfo(nombreEmbarque){
+  const target = normTxt(nombreEmbarque);
+  if(!target) return null;
+  const list = getShipmentsArray();
+  return list.find(s => {
+    const sName = normTxt(s.nombre);
+    return sName === target || target.includes(sName) || sName.includes(target);
+  });
+}
+
 function rowKey(block, embarque, marca, grupo){
   return block+"||"+normTxt(embarque)+"||"+normTxt(marca)+"||"+grupo;
 }
@@ -1481,16 +1495,11 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
   if(!row){
     row = {
       id: generateId(), block, categoria: grupo, mes, embarque, marca, grupo,
-      tipoImportacion: (meta&&meta.tipoImportacion)||"-", fechaArriboDepco:(meta&&meta.fechaArriboDepco)||"-",
-      consolidado:(meta&&meta.consolidado)||"-", fechaArriboCD:(meta&&meta.fechaArriboCD)||"-",
+      tipoImportacion: (meta&&meta.tipoImportacion)||"", fechaArriboDepco:(meta&&meta.fechaArriboDepco)||"",
+      consolidado:(meta&&meta.consolidado)||"", fechaArriboCD:(meta&&meta.fechaArriboCD)||"",
       channels: blankChannels(), observaciones:""
     };
     list.push(row);
-  } else if(meta){
-    if(meta.tipoImportacion && row.tipoImportacion==="-") row.tipoImportacion = meta.tipoImportacion;
-    if(meta.fechaArriboDepco && row.fechaArriboDepco==="-") row.fechaArriboDepco = meta.fechaArriboDepco;
-    if(meta.consolidado && row.consolidado==="-") row.consolidado = meta.consolidado;
-    if(meta.fechaArriboCD && row.fechaArriboCD==="-") row.fechaArriboCD = meta.fechaArriboCD;
   }
   return row;
 }
@@ -1680,32 +1689,31 @@ function renderResumen(){
     if(!embGroup){
       embGroup = {
         embarque: r.embarque,
-        tipoImportacion: r.tipoImportacion || "-",
-        fechaArriboDepco: r.fechaArriboDepco || "-",
-        consolidado: r.consolidado || "-",
-        fechaArriboCD: r.fechaArriboCD || "-",
+        tipoImportacion: r.tipoImportacion || "",
+        fechaArriboDepco: r.fechaArriboDepco || "",
+        consolidado: r.consolidado || "",
+        fechaArriboCD: r.fechaArriboCD || "",
         mes: r.mes || resumenState.mes,
         marcas: []
       };
       bList.push(embGroup);
     }
-    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(r.marca));
+    const resolvedMarca = resolveMarca(r.marca);
+    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(resolvedMarca));
     if(!mGroup){
-      mGroup = { marca: r.marca, rows: {} };
+      mGroup = { marca: resolvedMarca, rows: {} };
       embGroup.marcas.push(mGroup);
     }
     mGroup.rows[r.grupo] = r;
   });
 
   let html = "";
-  let isFirstRowOfTable = true;
 
-  // Renderizado por bloques estructurados como en el archivo Excel
+  // Renderizado por bloques estructurados
   blocks.forEach(blockName=>{
     const embList = structure[blockName];
     if(embList.length === 0) return;
 
-    // Encabezado de Sección
     html += `<tr class="block-title-row">
       <td colspan="${10 + CHANNEL_COLUMNS.length + 1}">
         📂 <b>${blockName}</b> — ${resumenState.mes}
@@ -1713,6 +1721,39 @@ function renderResumen(){
     </tr>`;
 
     embList.forEach((emb, embIdx)=>{
+      // Cruzar información con la Tabla de Entradas
+      const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
+      let displayTipo = "-";
+      let displayDepco = "-";
+      let displayConsolidado = "-";
+      let displayCD = "-";
+
+      if(shInfo){
+        displayTipo = tipoLabel(shInfo.tipo);
+        displayConsolidado = (shInfo.consolidado && shInfo.consolidado.trim()) ? shInfo.consolidado.trim() : "-";
+        
+        if(shInfo.fechaArriboDepco){
+          displayDepco = fmtDMY(parseISO(shInfo.fechaArriboDepco));
+        } else if(shInfo.tipo === "DEPCO"){
+          const acts = computeActivities(shInfo);
+          const depAct = acts.find(a=>a.key==="ingreso_depco");
+          if(depAct) displayDepco = `Del ${fmtDMY(depAct.start)} al ${fmtDMY(depAct.end)}`;
+        }
+        
+        if(shInfo.fechaArriboCD){
+          displayCD = fmtDMY(parseISO(shInfo.fechaArriboCD));
+        } else {
+          const acts = computeActivities(shInfo);
+          const cdAct = acts.find(a=>a.key==="ingreso_cd");
+          if(cdAct) displayCD = `Del ${fmtDMY(cdAct.start)} al ${fmtDMY(cdAct.end)}`;
+        }
+      } else {
+        displayTipo = emb.tipoImportacion || "-";
+        displayDepco = emb.fechaArriboDepco || "-";
+        displayConsolidado = emb.consolidado || "-";
+        displayCD = emb.fechaArriboCD || "-";
+      }
+
       const totalEmbarqueRows = emb.marcas.reduce((acc, m) => acc + GRUPOS.length, 0);
       let isFirstRowOfEmbarque = true;
 
@@ -1721,33 +1762,32 @@ function renderResumen(){
 
         GRUPOS.forEach((grupoName, gIdx)=>{
           const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {
-            tipoImportacion: emb.tipoImportacion,
-            fechaArriboDepco: emb.fechaArriboDepco,
-            consolidado: emb.consolidado,
-            fechaArriboCD: emb.fechaArriboCD
+            tipoImportacion: displayTipo,
+            fechaArriboDepco: displayDepco,
+            consolidado: displayConsolidado,
+            fechaArriboCD: displayCD
           });
           const totalRowQty = rowCantidadTotal(row);
-          const isTopGroupBorder = (gIdx === 0 && mIdx > 0);
 
           html += `<tr class="${(isFirstRowOfEmbarque && embIdx > 0) ? 'group-sep-row' : ''}">`;
 
-          // Columna 1: Bloque (solo en la primera fila del embarque)
+          // Celdas del embarque vinculadas
           if(isFirstRowOfEmbarque){
             html += `<td rowspan="${totalEmbarqueRows}" class="block-side-cell">${blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : ""}</td>`;
             html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:700;">${escapeHtml(emb.mes)}</td>`;
             html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell"><b>${escapeHtml(emb.embarque)}</b></td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.tipoImportacion)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.fechaArriboDepco)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.consolidado)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.fechaArriboCD)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayTipo)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayDepco)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayConsolidado)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayCD)}</td>`;
           }
 
-          // Columna Marca: abarca las 3 filas del grupo de la marca
+          // Celda de Marca
           if(gIdx === 0){
             html += `<td rowspan="${totalMarcaRows}" class="marca-cell ${mObj.marca}">${escapeHtml(mObj.marca)}</td>`;
           }
 
-          // Grupo y Cantidades
+          // Grupo y Cantidad
           html += `<td class="grupo-cell">${escapeHtml(grupoName)}</td>`;
           html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : "-"}</td>`;
 
@@ -1756,7 +1796,7 @@ function renderResumen(){
             html += `<td><input type="number" data-id="${row.id}" data-channel="${c}" value="${val === 0 ? '' : val}" placeholder="-"></td>`;
           });
 
-          // Observaciones: se agrupan por marca
+          // Observaciones por marca
           if(gIdx === 0){
             html += `<td rowspan="${totalMarcaRows}"><input type="text" data-id="${row.id}" data-field="observaciones" value="${escapeHtml(row.observaciones||'')}"></td>`;
           }
@@ -1768,7 +1808,7 @@ function renderResumen(){
     });
   });
 
-  // ========== FILAS DE CIERRE Y TOTALES (IDÉNTICO AL EXCEL) ==========
+  // ========== TOTALES GENERALES ==========
   const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
   const grandTotals = blankChannels();
 
@@ -1785,7 +1825,7 @@ function renderResumen(){
 
   html += `<tr class="group-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}" style="background:#f4f6fa;height:10px;"></td></tr>`;
 
-  // Fila Total por Grupo: Calzado
+  // Total por Grupo
   GRUPOS.forEach((gName, idx)=>{
     const gChannels = totalsByGrupo[gName];
     const gTotal = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (gChannels[c]||0), 0);
@@ -1798,7 +1838,7 @@ function renderResumen(){
     </tr>`;
   });
 
-  // Fila CANTIDAD TOTAL (Total General)
+  // Total General
   const grandTotalAll = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (grandTotals[c]||0), 0);
   html += `<tr class="grand-total-row">
     <td colspan="8" class="grand-label">CANTIDAD TOTAL</td>
@@ -1876,7 +1916,6 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", ()=>{
   showToast("🧹 Mes limpiado");
 });
 
-// Exportar exactamente la vista procesada a Excel
 document.getElementById("btnExportResumen").addEventListener("click", ()=>{
   const tbl = document.getElementById("resumenTable");
   const wb = XLSX.utils.table_to_book(tbl, {sheet: `RESUMEN_${resumenState.mes}`});
