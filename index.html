@@ -199,7 +199,7 @@
   .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .modal-grid .field.full{grid-column:1/-1;}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
-  /* ---------- HOJA DE RESÚMENES ---------- */
+  /* ---------- HOJA DE RESÚMENES (ESTILOS MEJORADOS) ---------- */
   .resumen-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px;}
   .month-tabs{display:flex;gap:4px;flex-wrap:wrap;}
   .month-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#f6f8fc;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;}
@@ -216,27 +216,37 @@
   .import-log div{margin-bottom:2px;}
   .import-log .err{color:var(--danger);}
   .import-log .ok{color:#2f6b1f;}
-  .resumen-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;}
-  table.resumen-table{border-collapse:collapse;min-width:2400px;font-size:11px;}
-  table.resumen-table th, table.resumen-table td{border:1px solid #e4e8f1;padding:4px 5px;white-space:nowrap;}
+  .resumen-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);}
+  table.resumen-table{border-collapse:collapse;min-width:2600px;font-size:11px;background:#fff;}
+  table.resumen-table th, table.resumen-table td{border:1px solid #d9dfea;padding:5px 6px;white-space:nowrap;vertical-align:middle;}
   table.resumen-table thead th{
-    background:var(--navy);color:#fff;position:sticky;top:0;z-index:2;font-size:10px;text-transform:uppercase;letter-spacing:.2px;
+    background:var(--navy);color:#fff;position:sticky;top:0;z-index:3;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;text-align:center;
   }
+  table.resumen-table thead th.th-left{text-align:left;}
   table.resumen-table input, table.resumen-table select{
-    border:none;background:transparent;width:100%;min-width:66px;font-size:11px;padding:2px;color:var(--ink);
+    border:1px solid transparent;background:transparent;width:100%;min-width:54px;font-size:11px;padding:3px 4px;color:var(--ink);border-radius:4px;
   }
-  table.resumen-table input:focus{background:#fff9d9;outline:1px solid #f0c98a;}
-  table.resumen-table input[type=number]{text-align:right;min-width:56px;}
-  table.resumen-table td.cat-cell{font-weight:800;color:var(--navy);background:#f6f8fc;min-width:90px;}
-  table.resumen-table td.embarque-cell input{font-weight:700;min-width:120px;}
-  table.resumen-table td.total-cell{font-weight:800;background:#eef3ff;text-align:right;}
-  tr.block-header-row td{
-    background:#1B2A4A;color:#fff;font-weight:800;text-align:left;padding:7px 10px;font-size:12px;letter-spacing:.2px;
-  }
-  tr.group-first td{border-top:2px solid #b9c3dd;}
-  tr.totals-row td{background:#fff3d6;font-weight:800;color:#5c4600;}
-  tr.grand-total-row td{background:#1B2A4A;color:#fff;font-weight:900;}
-  tr.grand-total-row td input{color:#fff;}
+  table.resumen-table input:hover{border-color:#ccd3e0;background:#fafbfe;}
+  table.resumen-table input:focus{background:#fff9d9;outline:1px solid #f0c98a;border-color:#f0c98a;}
+  table.resumen-table input[type=number]{text-align:right;}
+  
+  /* Celdas jerárquicas */
+  td.block-side-cell{background:#f1f4fa;color:var(--navy);font-weight:800;font-size:11px;text-align:center;border-right:2px solid #b9c3dd;letter-spacing:.4px;}
+  td.embarque-main-cell{background:#fafbfe;font-weight:700;color:var(--navy);border-right:1px solid #d9dfea;}
+  td.marca-cell{font-weight:700;text-align:center;}
+  td.marca-cell.ADIDAS{color:#9d0000;background:#fff6f6;}
+  td.marca-cell.REEBOK{color:#0d4a8c;background:#f3f7fd;}
+  td.grupo-cell{font-weight:600;color:#243660;background:#fbfcff;min-width:85px;}
+  td.total-cell{font-weight:800;background:#eef4ff;text-align:right;color:var(--navy);min-width:70px;}
+
+  /* Filas de sección y totales */
+  tr.block-title-row td{background:var(--navy);color:#fff;font-weight:800;text-align:left;padding:8px 12px;font-size:11.5px;letter-spacing:.4px;}
+  tr.group-sep-row td{border-top:2px solid #a4b3d1;}
+  tr.totals-group-row td{background:#fff8e7;font-weight:800;color:#6b4d00;}
+  tr.totals-group-row td.subtot-label{color:#8a5a00;font-weight:800;text-align:right;background:#fdf0cf;}
+  tr.grand-total-row td{background:#1B2A4A;color:#fff;font-weight:900;font-size:11.5px;border-top:2px solid #0d172a;}
+  tr.grand-total-row td.grand-label{text-align:right;letter-spacing:.5px;}
+  tr.grand-total-row td.grand-num{text-align:right;color:#FFD966;font-size:12px;}
 </style>
 </head>
 <body>
@@ -449,7 +459,7 @@
 <div class="view" id="view-resumen">
   <div class="card">
     <div class="card-head">
-      <h2>📑 Hoja de Resúmenes</h2>
+      <h2>📑 Hoja de Resúmenes Sintetizada (Estilo Calendario de Embarques)</h2>
       <div class="resumen-actions">
         <button class="btn" id="btnExportResumen" style="background:var(--ok);color:#fff;">⬇ Exportar mes a Excel</button>
         <button class="btn ghost" id="btnClearResumenMonth" style="background:#eee;color:var(--danger);">🧹 Limpiar mes</button>
@@ -677,15 +687,10 @@ function computeConsumo(sh, d0){
   const a6 = addBusinessDays(a4,1);
   const a7 = addBusinessDays(a6,1);
   
-  // Arribo al CD: si no se especifica, se estima con holgura posterior a la distribución
   const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(a7,6);
   const cdEnd = addBusinessDays(cdStart,2);
 
-  // Reglas solicitadas:
-  // 1. Intercompany/Ingreso Mayorista: 6 días hábiles antes del arribo al CD (CD 30/09 -> Lunes 21/09: paso de -7 días hábiles)
   const intercompanyDate = addBusinessDays(cdStart, -7);
-
-  // 2. Traslados/OCAs y LPN: faltando 3 días hábiles para el ingreso al CD (CD 30/09 -> Jueves 24/09: paso de -4 días hábiles)
   const trasladosDate = addBusinessDays(cdStart, -4);
 
   const defaultBars = [
@@ -919,7 +924,6 @@ function bindGanttDragAndDrop(){
   });
 }
 
-// Escuchador para restablecer fechas personalizadas
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -1396,12 +1400,15 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   renderMicroprocesos();
   showToast("✅ Actividad guardada");
 });
+
 /* =========================================================
-   9. HOJA DE RESÚMENES (CONEXIÓN EN LA NUBE)
+   9. HOJA DE RESÚMENES (ESTRUCTURA JERÁRQUICA SINTETIZADA)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_COLUMNS = ["MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP","EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA","TRANS-EMELEC","TRANS","DEPSI","DEPCO"];
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
+const GRUPOS = ["Calzado","Ropa","Accesorios"];
+
 function normTxt(s){
   if(s===null || s===undefined) return "";
   return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
@@ -1474,16 +1481,21 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
   if(!row){
     row = {
       id: generateId(), block, categoria: grupo, mes, embarque, marca, grupo,
-      tipoImportacion: (meta&&meta.tipoImportacion)||"", fechaArriboDepco:(meta&&meta.fechaArriboDepco)||"",
-      consolidado:(meta&&meta.consolidado)||"", fechaArriboCD:(meta&&meta.fechaArriboCD)||"",
+      tipoImportacion: (meta&&meta.tipoImportacion)||"-", fechaArriboDepco:(meta&&meta.fechaArriboDepco)||"-",
+      consolidado:(meta&&meta.consolidado)||"-", fechaArriboCD:(meta&&meta.fechaArriboCD)||"-",
       channels: blankChannels(), observaciones:""
     };
     list.push(row);
+  } else if(meta){
+    if(meta.tipoImportacion && row.tipoImportacion==="-") row.tipoImportacion = meta.tipoImportacion;
+    if(meta.fechaArriboDepco && row.fechaArriboDepco==="-") row.fechaArriboDepco = meta.fechaArriboDepco;
+    if(meta.consolidado && row.consolidado==="-") row.consolidado = meta.consolidado;
+    if(meta.fechaArriboCD && row.fechaArriboCD==="-") row.fechaArriboCD = meta.fechaArriboCD;
   }
   return row;
 }
 function ensureTriadRows(mes, block, embarque, marca, meta){
-  ["Calzado","Ropa","Accesorios"].forEach(g=> ensureRow(mes, block, embarque, marca, g, meta));
+  GRUPOS.forEach(g=> ensureRow(mes, block, embarque, marca, g, meta));
 }
 function findHeaderRow(aoa, requiredNames){
   const maxScan = Math.min(aoa.length, 25);
@@ -1518,8 +1530,8 @@ function tryParseFormatA(aoa, mes, log){
     const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
     const cantidad = cellNum(row, colMap["CANTIDAD"]);
     if(!marca || !grupo || cantidad===0) continue;
-    ensureTriadRows(mes, "EMBARQUE", embarque, marca, {});
-    const targetRow = ensureRow(mes, "EMBARQUE", embarque, marca, grupo, {});
+    ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
+    const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
     count++;
   }
@@ -1542,8 +1554,8 @@ function tryParseFormatB(aoa, mes, log){
     const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad===0) continue;
-    ensureTriadRows(mes, "EMBARQUE", embarque, marca, {});
-    const targetRow = ensureRow(mes, "EMBARQUE", embarque, marca, grupo, {});
+    ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
+    const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
     count++;
   }
@@ -1566,8 +1578,8 @@ function tryParseFormatC(aoa, mes, log){
     const destino = resolveChannel(cellStr(row, destColIdx), INTERCOMPANY_CHANNELS);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad===0) continue;
-    ensureTriadRows(mes, "INTERCOMPANY", intercompany, marca, {});
-    const targetRow = ensureRow(mes, "INTERCOMPANY", intercompany, marca, grupo, {});
+    ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
+    const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
     if(destino) targetRow.channels[destino] = (targetRow.channels[destino]||0) + cantidad;
     count++;
   }
@@ -1626,43 +1638,180 @@ function rowCantidadTotal(row){
 }
 function renderResumenThead(){
   const thead = document.getElementById("resumenThead");
-  const headers = ["INGRESOS EMBARQUE / CATEGORÍA","MES","EMBARQUE","TIPO DE IMPORTACIÓN","FECHA ARRIBO DEPCO","CONSOLIDADO","FECHA ARRIBO CD","MARCA","GRUPO","CANTIDAD TOTAL", ...CHANNEL_COLUMNS, "OBSERVACIONES"];
-  thead.innerHTML = `<tr>${headers.map(h=>`<th>${escapeHtml(h)}</th>`).join("")}</tr>`;
+  thead.innerHTML = `
+    <tr>
+      <th class="th-left" style="min-width:140px;">INGRESOS EMBARQUE</th>
+      <th style="min-width:80px;">MES</th>
+      <th style="min-width:120px;">EMBARQUE</th>
+      <th style="min-width:110px;">TIPO DE IMPORTACIÓN</th>
+      <th style="min-width:130px;">FECHA ARRIBO DEPCO</th>
+      <th style="min-width:110px;">CONSOLIDADO</th>
+      <th style="min-width:130px;">FECHA ARRIBO CD</th>
+      <th style="min-width:85px;">MARCA</th>
+      <th style="min-width:90px;">GRUPO</th>
+      <th style="min-width:90px;background:#15223c;">CANTIDAD TOTAL</th>
+      ${CHANNEL_COLUMNS.map(c=> `<th>${escapeHtml(c)}</th>`).join("")}
+      <th style="min-width:180px;">OBSERVACIONES</th>
+    </tr>`;
 }
+
 function renderResumen(){
   renderResumenThead();
-  const list = resumenState.months[resumenState.mes] || [];
+  const rawList = resumenState.months[resumenState.mes] || [];
   const emptyEl = document.getElementById("emptyResumen");
   document.querySelectorAll(".month-btn").forEach(b=> b.classList.toggle("active", b.dataset.mes===resumenState.mes));
-  if(list.length===0){
+  
+  if(rawList.length===0){
     document.getElementById("resumenTbody").innerHTML = "";
     emptyEl.style.display = "block";
     return;
   }
   emptyEl.style.display = "none";
+
+  // Agrupamiento por Bloque -> Embarque -> Marca
+  const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES"];
+  const structure = {};
+  blocks.forEach(b=> structure[b] = []);
+
+  rawList.forEach(r=>{
+    const bKey = (r.block === "INTERCOMPANIES" || r.block === "INTERCOMPANY") ? "INTERCOMPANIES" : "INGRESOS EMBARQUE";
+    let bList = structure[bKey];
+    let embGroup = bList.find(e => normTxt(e.embarque) === normTxt(r.embarque));
+    if(!embGroup){
+      embGroup = {
+        embarque: r.embarque,
+        tipoImportacion: r.tipoImportacion || "-",
+        fechaArriboDepco: r.fechaArriboDepco || "-",
+        consolidado: r.consolidado || "-",
+        fechaArriboCD: r.fechaArriboCD || "-",
+        mes: r.mes || resumenState.mes,
+        marcas: []
+      };
+      bList.push(embGroup);
+    }
+    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(r.marca));
+    if(!mGroup){
+      mGroup = { marca: r.marca, rows: {} };
+      embGroup.marcas.push(mGroup);
+    }
+    mGroup.rows[r.grupo] = r;
+  });
+
   let html = "";
-  const order = {Calzado:0, Ropa:1, Accesorios:2};
-  list.sort((a,b)=> (order[a.categoria]||0)-(order[b.categoria]||0));
-  list.forEach(row=>{
-    const total = rowCantidadTotal(row);
-    html += `<tr>
-      <td class="cat-cell">${escapeHtml(row.categoria)}</td>
-      <td>${escapeHtml(row.mes)}</td>
-      <td class="embarque-cell"><b>${escapeHtml(row.embarque)}</b></td>
-      <td>${escapeHtml(row.tipoImportacion)}</td>
-      <td>${escapeHtml(row.fechaArriboDepco)}</td>
-      <td>${escapeHtml(row.consolidado)}</td>
-      <td>${escapeHtml(row.fechaArriboCD)}</td>
-      <td>${escapeHtml(row.marca)}</td>
-      <td>${escapeHtml(row.grupo)}</td>
-      <td class="total-cell">${total}</td>
-      ${CHANNEL_COLUMNS.map(c=> `<td><input type="number" data-id="${row.id}" data-channel="${c}" value="${row.channels[c]||0}"></td>`).join("")}
-      <td><input type="text" data-id="${row.id}" data-field="observaciones" value="${escapeHtml(row.observaciones||'')}"></td>
+  let isFirstRowOfTable = true;
+
+  // Renderizado por bloques estructurados como en el archivo Excel
+  blocks.forEach(blockName=>{
+    const embList = structure[blockName];
+    if(embList.length === 0) return;
+
+    // Encabezado de Sección
+    html += `<tr class="block-title-row">
+      <td colspan="${10 + CHANNEL_COLUMNS.length + 1}">
+        📂 <b>${blockName}</b> — ${resumenState.mes}
+      </td>
+    </tr>`;
+
+    embList.forEach((emb, embIdx)=>{
+      const totalEmbarqueRows = emb.marcas.reduce((acc, m) => acc + GRUPOS.length, 0);
+      let isFirstRowOfEmbarque = true;
+
+      emb.marcas.forEach((mObj, mIdx)=>{
+        const totalMarcaRows = GRUPOS.length;
+
+        GRUPOS.forEach((grupoName, gIdx)=>{
+          const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {
+            tipoImportacion: emb.tipoImportacion,
+            fechaArriboDepco: emb.fechaArriboDepco,
+            consolidado: emb.consolidado,
+            fechaArriboCD: emb.fechaArriboCD
+          });
+          const totalRowQty = rowCantidadTotal(row);
+          const isTopGroupBorder = (gIdx === 0 && mIdx > 0);
+
+          html += `<tr class="${(isFirstRowOfEmbarque && embIdx > 0) ? 'group-sep-row' : ''}">`;
+
+          // Columna 1: Bloque (solo en la primera fila del embarque)
+          if(isFirstRowOfEmbarque){
+            html += `<td rowspan="${totalEmbarqueRows}" class="block-side-cell">${blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : ""}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:700;">${escapeHtml(emb.mes)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell"><b>${escapeHtml(emb.embarque)}</b></td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.tipoImportacion)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.fechaArriboDepco)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.consolidado)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(emb.fechaArriboCD)}</td>`;
+          }
+
+          // Columna Marca: abarca las 3 filas del grupo de la marca
+          if(gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}" class="marca-cell ${mObj.marca}">${escapeHtml(mObj.marca)}</td>`;
+          }
+
+          // Grupo y Cantidades
+          html += `<td class="grupo-cell">${escapeHtml(grupoName)}</td>`;
+          html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : "-"}</td>`;
+
+          CHANNEL_COLUMNS.forEach(c=>{
+            const val = row.channels[c] || 0;
+            html += `<td><input type="number" data-id="${row.id}" data-channel="${c}" value="${val === 0 ? '' : val}" placeholder="-"></td>`;
+          });
+
+          // Observaciones: se agrupan por marca
+          if(gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}"><input type="text" data-id="${row.id}" data-field="observaciones" value="${escapeHtml(row.observaciones||'')}"></td>`;
+          }
+
+          html += `</tr>`;
+          isFirstRowOfEmbarque = false;
+        });
+      });
+    });
+  });
+
+  // ========== FILAS DE CIERRE Y TOTALES (IDÉNTICO AL EXCEL) ==========
+  const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
+  const grandTotals = blankChannels();
+
+  rawList.forEach(r=>{
+    const g = r.grupo;
+    if(totalsByGrupo[g]){
+      CHANNEL_COLUMNS.forEach(c=>{
+        const q = Number(r.channels[c]) || 0;
+        totalsByGrupo[g][c] += q;
+        grandTotals[c] += q;
+      });
+    }
+  });
+
+  html += `<tr class="group-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}" style="background:#f4f6fa;height:10px;"></td></tr>`;
+
+  // Fila Total por Grupo: Calzado
+  GRUPOS.forEach((gName, idx)=>{
+    const gChannels = totalsByGrupo[gName];
+    const gTotal = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (gChannels[c]||0), 0);
+    html += `<tr class="totals-group-row">
+      ${idx === 0 ? `<td rowspan="3" colspan="8" class="subtot-label">TOTAL POR GRUPO</td>` : ''}
+      <td style="font-weight:800;background:#fdf0cf;color:#5c4600;">${gName}</td>
+      <td class="total-cell" style="background:#ffeaa7;font-weight:800;">${gTotal ? gTotal.toLocaleString() : 0}</td>
+      ${CHANNEL_COLUMNS.map(c=> `<td style="text-align:right;padding:4px 6px;font-weight:700;">${gChannels[c] ? gChannels[c].toLocaleString() : 0}</td>`).join("")}
+      <td></td>
     </tr>`;
   });
+
+  // Fila CANTIDAD TOTAL (Total General)
+  const grandTotalAll = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (grandTotals[c]||0), 0);
+  html += `<tr class="grand-total-row">
+    <td colspan="8" class="grand-label">CANTIDAD TOTAL</td>
+    <td style="background:#15223c;"></td>
+    <td class="grand-num">${grandTotalAll ? grandTotalAll.toLocaleString() : 0}</td>
+    ${CHANNEL_COLUMNS.map(c=> `<td class="grand-num">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
+    <td></td>
+  </tr>`;
+
   document.getElementById("resumenTbody").innerHTML = html;
-  populateResumenGroupSelect(list);
+  populateResumenGroupSelect(rawList);
 }
+
 function populateResumenGroupSelect(list){
   const sel = document.getElementById("resumenGroupSelect");
   const seen = new Set();
@@ -1675,12 +1824,14 @@ function populateResumenGroupSelect(list){
   });
   sel.innerHTML = opts;
 }
+
 document.getElementById("resumenMonthTabs").addEventListener("click",(e)=>{
   const btn = e.target.closest(".month-btn");
   if(!btn) return;
   resumenState.mes = btn.dataset.mes;
   renderResumen();
 });
+
 const resumenDropzone = document.getElementById("resumenDropzone");
 const resumenFileInput = document.getElementById("resumenFileInput");
 resumenDropzone.addEventListener("click", ()=> resumenFileInput.click());
@@ -1692,6 +1843,7 @@ resumenDropzone.addEventListener("drop",(e)=>{
   resumenDropzone.classList.remove("dragover");
   if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
 });
+
 document.getElementById("resumenTbody").addEventListener("change",(e)=>{
   const el = e.target;
   const list = resumenState.months[resumenState.mes] || [];
@@ -1705,6 +1857,7 @@ document.getElementById("resumenTbody").addEventListener("change",(e)=>{
   resumenSave();
   renderResumen();
 });
+
 document.getElementById("btnRemoveResumenGroup").addEventListener("click", ()=>{
   const sel = document.getElementById("resumenGroupSelect");
   if(!sel.value) return;
@@ -1714,6 +1867,7 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", ()=>{
   renderResumen();
   showToast("🗑️ Quitado del mes");
 });
+
 document.getElementById("btnClearResumenMonth").addEventListener("click", ()=>{
   if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
   resumenState.months[resumenState.mes] = [];
@@ -1721,6 +1875,15 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", ()=>{
   renderResumen();
   showToast("🧹 Mes limpiado");
 });
+
+// Exportar exactamente la vista procesada a Excel
+document.getElementById("btnExportResumen").addEventListener("click", ()=>{
+  const tbl = document.getElementById("resumenTable");
+  const wb = XLSX.utils.table_to_book(tbl, {sheet: `RESUMEN_${resumenState.mes}`});
+  XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
+  showToast("⬇ Archivo Excel exportado");
+});
+
 /* =========================================================
    10. INICIALIZACIÓN
 ========================================================= */
