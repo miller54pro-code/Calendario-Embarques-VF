@@ -1398,7 +1398,7 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 });
 
 /* =========================================================
-   9. HOJA DE RESÚMENES (SOPORTE COMPLETO DEPCO & SOLO LECTURA)
+   9. HOJA DE RESÚMENES (SOPORTE DEPCO & DATOS FIJOS)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_COLUMNS = ["MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP","EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA","TRANS-EMELEC","TRANS","DEPSI","DEPCO"];
@@ -1428,25 +1428,21 @@ const CHANNEL_ALIAS_MAP = (function(){
     "TRANS-EMELEC":["TRANS-EMELEC","TRANS EMELEC","TRANSEMELEC"],
     "TRANS":["TRANS","TRASLADO","TRASLADOS"],
     "DEPSI":["DEPSI"],
-    "DEPCO":["DEPCO","DEPCO CONSUMO","CANAL FINAL DEPCO","CANAL DEPCO","DEPCO BODEGA","BODEGA DEPCO","CANAL FINAL : DEPCO","TRANS-DEPCO","TRANS DEPCO"]
+    "DEPCO":["DEPCO","DEPCO CONSUMO","CANAL FINAL DEPCO","CANAL DEPCO","DEPCO BODEGA","BODEGA DEPCO","CANAL FINAL : DEPCO"]
   };
   const map = {};
   Object.keys(raw).forEach(canon=>{ raw[canon].forEach(alias=> map[normTxt(alias)] = canon); });
   return map;
 })();
 
-function resolveChannel(raw, allowedList, isDepcoContext){
+function resolveChannel(raw, allowedList){
   const key = normTxt(raw);
-  if(!key || key === "-"){
-    return isDepcoContext ? "DEPCO" : null;
-  }
   let canon = CHANNEL_ALIAS_MAP[key];
   if(!canon){
     if(key.indexOf("DEPCO") > -1) canon = "DEPCO";
     else if(key.indexOf("MARATHON") > -1) canon = "MARATHON";
     else if(key.indexOf("TIENDA") > -1) canon = "TIENDAS";
     else if(key.indexOf("MAYOR") > -1) canon = "MAYORISTA";
-    else if(isDepcoContext) canon = "DEPCO";
   }
   if(!canon) return null;
   if(allowedList && !allowedList.includes(canon)) return null;
@@ -1543,7 +1539,7 @@ function tryParseFormatA(aoa, mes, log){
     "EMBARQUE",
     "MARCA",
     "GRUPO",
-    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL", "DESTINO", "TIPO DE IMPORTACION"],
+    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL"],
     "CANTIDAD"
   ]);
   if(!header) return false;
@@ -1551,30 +1547,23 @@ function tryParseFormatA(aoa, mes, log){
 
   const canalCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : 
                    colMap["CANAL DEPCO"] !== undefined ? colMap["CANAL DEPCO"] : 
-                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : 
-                   colMap["CANAL"] !== undefined ? colMap["CANAL"] : colMap["DESTINO"];
+                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : colMap["CANAL"];
   const canalDepcoCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : colMap["CANAL DEPCO"];
-  const tipoCol = colMap["TIPO DE IMPORTACION"] !== undefined ? colMap["TIPO DE IMPORTACION"] : colMap["TIPO"];
 
   let count=0;
   for(let r=rowIndex+1; r<aoa.length; r++){
     const row = aoa[r]||[];
     const embarque = cellStr(row, colMap["EMBARQUE"]);
     if(!embarque) continue;
-
-    // Verificar si el embarque es de tipo DEPCO (registrado o en la fila)
-    const shInfo = findShipmentInfo(embarque);
-    const rowTipo = tipoCol !== undefined ? normTxt(cellStr(row, tipoCol)) : "";
-    const isDepco = (shInfo && shInfo.tipo === "DEPCO") || (rowTipo.indexOf("DEPCO") > -1);
-
     const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
     const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
 
-    let rawCanal = canalCol !== undefined ? cellStr(row, canalCol) : "";
+    // Revisar canal final y canal final depco si ambos están presentes
+    let rawCanal = cellStr(row, canalCol);
     if((!rawCanal || rawCanal==="-") && canalDepcoCol !== undefined){
       rawCanal = cellStr(row, canalDepcoCol);
     }
-    const canal = resolveChannel(rawCanal, null, isDepco);
+    const canal = resolveChannel(rawCanal, null);
     const cantidad = cellNum(row, colMap["CANTIDAD"]);
     if(!marca || !grupo || cantidad===0) continue;
 
@@ -1593,7 +1582,7 @@ function tryParseFormatB(aoa, mes, log){
     "EMBARQUE",
     "MARCA",
     "GRUPO",
-    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL", "DESTINO", "TIPO DE IMPORTACION"]
+    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL"]
   ]);
   if(!header) return false;
   const {rowIndex, colMap} = header;
@@ -1601,36 +1590,23 @@ function tryParseFormatB(aoa, mes, log){
 
   const canalCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : 
                    colMap["CANAL DEPCO"] !== undefined ? colMap["CANAL DEPCO"] : 
-                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : 
-                   colMap["CANAL"] !== undefined ? colMap["CANAL"] : colMap["DESTINO"];
+                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : colMap["CANAL"];
   const canalDepcoCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : colMap["CANAL DEPCO"];
-  const tipoCol = colMap["TIPO DE IMPORTACION"] !== undefined ? colMap["TIPO DE IMPORTACION"] : colMap["TIPO"];
 
   let count=0;
   for(let r=rowIndex+1; r<aoa.length; r++){
     const row = aoa[r]||[];
+    if(normTxt(cellStr(row, colMap["INSTRUCCION"])) !== "IMPORTAR") continue;
     const embarque = cellStr(row, colMap["EMBARQUE"]);
     if(!embarque) continue;
-
-    // Verificar si el embarque es de tipo DEPCO
-    const shInfo = findShipmentInfo(embarque);
-    const rowTipo = tipoCol !== undefined ? normTxt(cellStr(row, tipoCol)) : "";
-    const isDepco = (shInfo && shInfo.tipo === "DEPCO") || (rowTipo.indexOf("DEPCO") > -1);
-
-    const instrVal = normTxt(cellStr(row, colMap["INSTRUCCION"]));
-    // Acepta IMPORTAR, DEPCO o filas sin instrucción explícita si el embarque es DEPCO
-    if(instrVal !== "IMPORTAR" && instrVal.indexOf("DEPCO") === -1 && !(isDepco && (!instrVal || instrVal === "-"))) {
-      continue;
-    }
-
     const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
     const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
 
-    let rawCanal = canalCol !== undefined ? cellStr(row, canalCol) : "";
+    let rawCanal = cellStr(row, canalCol);
     if((!rawCanal || rawCanal==="-") && canalDepcoCol !== undefined){
       rawCanal = cellStr(row, canalDepcoCol);
     }
-    const canal = resolveChannel(rawCanal, null, isDepco);
+    const canal = resolveChannel(rawCanal, null);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad===0) continue;
 
@@ -1639,7 +1615,7 @@ function tryParseFormatB(aoa, mes, log){
     if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
     count++;
   }
-  log.push({type:"ok", msg:`OC LPN Consolidado: ${count} registros procesados.`});
+  log.push({type:"ok", msg:`OC LPN Consolidado: ${count} registros IMPORTAR procesados.`});
   return true;
 }
 
@@ -1656,7 +1632,7 @@ function tryParseFormatC(aoa, mes, log){
     if(!intercompany) continue;
     const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
     const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-    const destino = resolveChannel(cellStr(row, destColIdx), INTERCOMPANY_CHANNELS, false);
+    const destino = resolveChannel(cellStr(row, destColIdx), INTERCOMPANY_CHANNELS);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad===0) continue;
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
