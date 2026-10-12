@@ -1398,7 +1398,7 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 });
 
 /* =========================================================
-   9. HOJA DE RESÚMENES (SOPORTE DEPCO & DATOS FIJOS)
+   9. HOJA DE RESÚMENES (DATOS FIJOS / SOLO LECTURA)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_COLUMNS = ["MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP","EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA","TRANS-EMELEC","TRANS","DEPSI","DEPCO"];
@@ -1428,22 +1428,15 @@ const CHANNEL_ALIAS_MAP = (function(){
     "TRANS-EMELEC":["TRANS-EMELEC","TRANS EMELEC","TRANSEMELEC"],
     "TRANS":["TRANS","TRASLADO","TRASLADOS"],
     "DEPSI":["DEPSI"],
-    "DEPCO":["DEPCO","DEPCO CONSUMO","CANAL FINAL DEPCO","CANAL DEPCO","DEPCO BODEGA","BODEGA DEPCO","CANAL FINAL : DEPCO"]
+    "DEPCO":["DEPCO"]
   };
   const map = {};
   Object.keys(raw).forEach(canon=>{ raw[canon].forEach(alias=> map[normTxt(alias)] = canon); });
   return map;
 })();
-
 function resolveChannel(raw, allowedList){
   const key = normTxt(raw);
-  let canon = CHANNEL_ALIAS_MAP[key];
-  if(!canon){
-    if(key.indexOf("DEPCO") > -1) canon = "DEPCO";
-    else if(key.indexOf("MARATHON") > -1) canon = "MARATHON";
-    else if(key.indexOf("TIENDA") > -1) canon = "TIENDAS";
-    else if(key.indexOf("MAYOR") > -1) canon = "MAYORISTA";
-  }
+  const canon = CHANNEL_ALIAS_MAP[key];
   if(!canon) return null;
   if(allowedList && !allowedList.includes(canon)) return null;
   return canon;
@@ -1507,18 +1500,12 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
 function ensureTriadRows(mes, block, embarque, marca, meta){
   GRUPOS.forEach(g=> ensureRow(mes, block, embarque, marca, g, meta));
 }
-
-// Búsqueda flexible de fila de encabezados con soporte para variantes de CANAL FINAL / DEPCO
-function findHeaderRow(aoa, requiredOptions){
+function findHeaderRow(aoa, requiredNames){
   const maxScan = Math.min(aoa.length, 25);
   for(let r=0; r<maxScan; r++){
     const row = aoa[r] || [];
     const normRow = row.map(normTxt);
-    const hasAll = requiredOptions.every(req => {
-      if(Array.isArray(req)) return req.some(name => normRow.includes(name));
-      return normRow.includes(req);
-    });
-    if(hasAll){
+    if(requiredNames.every(name => normRow.includes(name))){
       const colMap = {};
       normRow.forEach((val,idx)=>{ if(val && colMap[val]===undefined) colMap[val]=idx; });
       return {rowIndex:r, colMap};
@@ -1526,30 +1513,16 @@ function findHeaderRow(aoa, requiredOptions){
   }
   return null;
 }
-
 function cellStr(row, idx){ return idx===undefined || idx===null || row[idx]===undefined || row[idx]===null ? "" : String(row[idx]).trim(); }
 function cellNum(row, idx){
   if(idx===undefined || idx===null || row[idx]===undefined || row[idx]===null || row[idx]==="") return 0;
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g,""));
   return isNaN(n) ? 0 : n;
 }
-
 function tryParseFormatA(aoa, mes, log){
-  const header = findHeaderRow(aoa, [
-    "EMBARQUE",
-    "MARCA",
-    "GRUPO",
-    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL"],
-    "CANTIDAD"
-  ]);
+  const header = findHeaderRow(aoa, ["EMBARQUE","MARCA","GRUPO","CANAL FINAL","CANTIDAD"]);
   if(!header) return false;
   const {rowIndex, colMap} = header;
-
-  const canalCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : 
-                   colMap["CANAL DEPCO"] !== undefined ? colMap["CANAL DEPCO"] : 
-                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : colMap["CANAL"];
-  const canalDepcoCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : colMap["CANAL DEPCO"];
-
   let count=0;
   for(let r=rowIndex+1; r<aoa.length; r++){
     const row = aoa[r]||[];
@@ -1557,16 +1530,9 @@ function tryParseFormatA(aoa, mes, log){
     if(!embarque) continue;
     const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
     const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-
-    // Revisar canal final y canal final depco si ambos están presentes
-    let rawCanal = cellStr(row, canalCol);
-    if((!rawCanal || rawCanal==="-") && canalDepcoCol !== undefined){
-      rawCanal = cellStr(row, canalDepcoCol);
-    }
-    const canal = resolveChannel(rawCanal, null);
+    const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
     const cantidad = cellNum(row, colMap["CANTIDAD"]);
     if(!marca || !grupo || cantidad===0) continue;
-
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
@@ -1575,24 +1541,11 @@ function tryParseFormatA(aoa, mes, log){
   log.push({type:"ok", msg:`OC Consolidada: ${count} registros procesados.`});
   return true;
 }
-
 function tryParseFormatB(aoa, mes, log){
-  const header = findHeaderRow(aoa, [
-    "INSTRUCCION",
-    "EMBARQUE",
-    "MARCA",
-    "GRUPO",
-    ["CANAL FINAL", "CANAL FINAL DEPCO", "CANAL DEPCO", "CANAL"]
-  ]);
+  const header = findHeaderRow(aoa, ["INSTRUCCION","EMBARQUE","MARCA","GRUPO","CANAL FINAL"]);
   if(!header) return false;
   const {rowIndex, colMap} = header;
   const qtyCol = colMap["LPN DETAIL SIZE VALUE"] !== undefined ? colMap["LPN DETAIL SIZE VALUE"] : colMap["CANTIDAD"];
-
-  const canalCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : 
-                   colMap["CANAL DEPCO"] !== undefined ? colMap["CANAL DEPCO"] : 
-                   colMap["CANAL FINAL"] !== undefined ? colMap["CANAL FINAL"] : colMap["CANAL"];
-  const canalDepcoCol = colMap["CANAL FINAL DEPCO"] !== undefined ? colMap["CANAL FINAL DEPCO"] : colMap["CANAL DEPCO"];
-
   let count=0;
   for(let r=rowIndex+1; r<aoa.length; r++){
     const row = aoa[r]||[];
@@ -1601,15 +1554,9 @@ function tryParseFormatB(aoa, mes, log){
     if(!embarque) continue;
     const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
     const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-
-    let rawCanal = cellStr(row, canalCol);
-    if((!rawCanal || rawCanal==="-") && canalDepcoCol !== undefined){
-      rawCanal = cellStr(row, canalDepcoCol);
-    }
-    const canal = resolveChannel(rawCanal, null);
+    const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad===0) continue;
-
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
@@ -1618,7 +1565,6 @@ function tryParseFormatB(aoa, mes, log){
   log.push({type:"ok", msg:`OC LPN Consolidado: ${count} registros IMPORTAR procesados.`});
   return true;
 }
-
 function tryParseFormatC(aoa, mes, log){
   const header = findHeaderRow(aoa, ["INTERCOMPANY","MARCA","GRUPO"]);
   if(!header) return false;
@@ -1643,7 +1589,6 @@ function tryParseFormatC(aoa, mes, log){
   log.push({type:"ok", msg:`Intercompany: ${count} registros procesados.`});
   return true;
 }
-
 function processWorkbook(workbook, mes, fileName, log){
   let matched = false;
   for(const sheetName of workbook.SheetNames){
@@ -1660,7 +1605,6 @@ function processWorkbook(workbook, mes, fileName, log){
     log.push({type:"ok", msg:`"${fileName}" sincronizado en ${mes}.`});
   }
 }
-
 function handleResumenFiles(fileList){
   const log = [];
   const files = Array.from(fileList);
@@ -1686,18 +1630,15 @@ function handleResumenFiles(fileList){
     reader.readAsArrayBuffer(file);
   });
 }
-
 function showResumenLog(log){
   const el = document.getElementById("resumenImportLog");
   if(log.length===0){ el.style.display="none"; return; }
   el.style.display = "block";
   el.innerHTML = log.map(l=> `<div class="${l.type==='err'?'err':'ok'}">${l.type==='err'?'❌':'✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
-
 function rowCantidadTotal(row){
   return CHANNEL_COLUMNS.reduce((sum,c)=> sum + (Number(row.channels[c])||0), 0);
 }
-
 function renderResumenThead(){
   const thead = document.getElementById("resumenThead");
   thead.innerHTML = `
@@ -1844,7 +1785,7 @@ function renderResumen(){
           html += `<td class="grupo-cell">${escapeHtml(grupoName)}</td>`;
           html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : "-"}</td>`;
 
-          // Celdas fijas de Canales (Solo Lectura, incluye DEPCO)
+          // Celdas fijas de Canales (Solo Lectura)
           CHANNEL_COLUMNS.forEach(c=>{
             const val = row.channels[c] || 0;
             html += `<td class="channel-val">${val === 0 ? "-" : Number(val).toLocaleString()}</td>`;
