@@ -199,7 +199,8 @@
   .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .modal-grid .field.full{grid-column:1/-1;}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
-  /* ---------- HOJA DE RESÚMENES (ESTILOS MEJORADOS) ---------- */
+
+  /* ---------- HOJA DE RESÚMENES (ESTILO CONSOLIDADO EXCEL) ---------- */
   .resumen-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px;}
   .month-tabs{display:flex;gap:4px;flex-wrap:wrap;}
   .month-btn{padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:#f6f8fc;color:var(--navy);font-size:12px;font-weight:700;cursor:pointer;}
@@ -216,32 +217,30 @@
   .import-log div{margin-bottom:2px;}
   .import-log .err{color:var(--danger);}
   .import-log .ok{color:#2f6b1f;}
-  .resumen-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);}
-  table.resumen-table{border-collapse:collapse;min-width:2600px;font-size:11px;background:#fff;}
-  table.resumen-table th, table.resumen-table td{border:1px solid #d9dfea;padding:6px 7px;white-space:nowrap;vertical-align:middle;}
+  .resumen-table-wrap{overflow-x:auto;border:1px solid #d9dfea;border-radius:8px;box-shadow:var(--shadow);background:#fff;}
+  table.resumen-table{border-collapse:collapse;min-width:2700px;font-size:11.5px;color:#1c2333;}
+  table.resumen-table th, table.resumen-table td{border:1px solid #d0d7de;padding:6px 8px;white-space:nowrap;vertical-align:middle;}
   table.resumen-table thead th{
-    background:var(--navy);color:#fff;position:sticky;top:0;z-index:3;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;text-align:center;
+    background:#fff;color:#1c2333;font-weight:700;font-size:11px;text-align:center;letter-spacing:.2px;
   }
-  table.resumen-table thead th.th-left{text-align:left;}
   
-  /* Celdas jerárquicas */
-  td.block-side-cell{background:#f1f4fa;color:var(--navy);font-weight:800;font-size:11px;text-align:center;border-right:2px solid #b9c3dd;letter-spacing:.4px;}
-  td.embarque-main-cell{background:#fafbfe;font-weight:700;color:var(--navy);border-right:1px solid #d9dfea;}
-  td.marca-cell{font-weight:700;text-align:center;}
-  td.marca-cell.ADIDAS{color:#9d0000;background:#fff6f6;}
-  td.marca-cell.REEBOK{color:#0d4a8c;background:#f3f7fd;}
-  td.grupo-cell{font-weight:600;color:#243660;background:#fbfcff;min-width:85px;}
-  td.total-cell{font-weight:800;background:#eef4ff;text-align:right;color:var(--navy);min-width:70px;}
-  td.channel-val{text-align:right;font-variant-numeric:tabular-nums;min-width:60px;}
-
-  /* Filas de sección y totales */
-  tr.block-title-row td{background:var(--navy);color:#fff;font-weight:800;text-align:left;padding:8px 12px;font-size:11.5px;letter-spacing:.4px;}
-  tr.group-sep-row td{border-top:2px solid #a4b3d1;}
-  tr.totals-group-row td{background:#fff8e7;font-weight:800;color:#6b4d00;}
-  tr.totals-group-row td.subtot-label{color:#8a5a00;font-weight:800;text-align:right;background:#fdf0cf;}
-  tr.grand-total-row td{background:#1B2A4A;color:#fff;font-weight:900;font-size:11.5px;border-top:2px solid #0d172a;}
-  tr.grand-total-row td.grand-label{text-align:right;letter-spacing:.5px;}
-  tr.grand-total-row td.grand-num{text-align:right;color:#FFD966;font-size:12px;font-variant-numeric:tabular-nums;}
+  /* Celdas del cuerpo */
+  td.block-side-cell{background:#ffffff;color:#1c2333;font-weight:700;text-align:center;letter-spacing:.4px;}
+  td.embarque-main-cell{background:#ffffff;font-weight:400;text-align:center;}
+  td.marca-cell{text-align:center;background:#d9e1f2;color:#1c2333;}
+  td.grupo-cell{text-align:left;padding-left:10px;}
+  td.total-cell{font-weight:700;text-align:center;color:#c00000;}
+  td.channel-val{text-align:center;font-variant-numeric:tabular-nums;min-width:65px;}
+  
+  /* Filas de totales consolidadas */
+  tr.totals-group-row td{background:#ffffff;}
+  tr.totals-group-row td.subtot-label{font-weight:700;text-align:center;background:#ffffff;}
+  tr.totals-group-row td.total-cell{color:#c00000;font-weight:700;}
+  tr.grand-total-row td{background:#c6e0b4;font-weight:700;border-top:2px solid #a9d18e;}
+  tr.grand-total-row td.grand-label{text-align:center;background:#a9d18e;color:#1c2333;}
+  tr.grand-total-row td.grand-num{text-align:center;color:#c00000;font-variant-numeric:tabular-nums;}
+  tr.grand-total-row td.grand-channel{text-align:center;color:#1c2333;font-variant-numeric:tabular-nums;}
+  tr.empty-sep-row td{background:#f9fbfd;height:12px;border:none;}
 </style>
 </head>
 <body>
@@ -256,7 +255,6 @@
     </div>
     <div class="toolbar-actions">
       <div class="sync-indicator" id="syncIndicator"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Iniciando…</span></div>
-      <button class="btn" id="btnSaveNow" style="background:var(--ok);color:#fff;">💾 Guardar cambios</button>
       <button class="btn ghost" id="btnExport">⬇ Exportar (JSON)</button>
       <button class="btn ghost" id="btnImport">⬆ Importar</button>
       <input type="file" id="fileImport" accept="application/json" style="display:none;">
@@ -370,7 +368,6 @@
       <h2>🔬 Microprocesos y Tareas</h2>
       <div style="display:flex;gap:8px;">
         <button class="btn" id="btnAddMicro" style="background:var(--navy);color:#fff;">+ Agregar Actividad</button>
-        <button class="btn ghost" id="btnRegenMicro" style="color:var(--navy);background:#eee;">🔄 Regenerar desde plantilla</button>
       </div>
     </div>
     <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
@@ -399,7 +396,6 @@
         <span>✅ <span id="microDoneCount">0</span> completadas</span>
       </div>
     </div>
-    <div id="microMismatchWarning" class="overlap-alert" style="display:none;"></div>
     <div class="micro-table-wrap">
       <table class="micro-table" id="microTable">
         <thead id="microThead"></thead>
@@ -461,17 +457,17 @@
       </div>
     </div>
     <div class="month-tabs" id="resumenMonthTabs">
-      <button class="month-btn" data-mes="JULIO">JULIO</button>
+      <button class="month-btn active" data-mes="JULIO">JULIO</button>
       <button class="month-btn" data-mes="AGOSTO">AGOSTO</button>
       <button class="month-btn" data-mes="SEPTIEMBRE">SEPTIEMBRE</button>
-      <button class="month-btn active" data-mes="OCTUBRE">OCTUBRE</button>
+      <button class="month-btn" data-mes="OCTUBRE">OCTUBRE</button>
       <button class="month-btn" data-mes="NOVIEMBRE">NOVIEMBRE</button>
       <button class="month-btn" data-mes="DICIEMBRE">DICIEMBRE</button>
     </div>
     <div class="resumen-toolbar">
       <div class="dropzone" id="resumenDropzone">
         📤 Arrastra aquí tu archivo Excel (.xlsx), o <b>haz clic para seleccionarlo</b><br>
-        <span style="font-size:11px;">Soporta: OC Consolidada, OC LPN Consolidado, Intercompany. Sincronizado en vivo con Jefatura. Datos protegidos (solo lectura).</span>
+        <span style="font-size:11px;">Soporta: OC Consolidada, OC LPN Consolidado, Intercompany. Sincronizado en vivo.</span>
         <input type="file" id="resumenFileInput" accept=".xlsx,.xls" multiple style="display:none;">
       </div>
     </div>
@@ -493,7 +489,7 @@
   </div>
 </div>
 <footer class="hint no-print">
-  <b>Modo Colaborativo en Vivo:</b> Los cambios, traslados manuales de actividades en el Gantt y archivos subidos se sincronizan en tiempo real mediante Firebase Realtime Database.
+  <b>Modo Colaborativo en Vivo:</b> Los cambios y planificaciones se sincronizan en tiempo real mediante Firebase Realtime Database.
 </footer>
 <script>
 (function(){
@@ -643,14 +639,12 @@ function dateRange(start, end){
   return days;
 }
 const DOW_LETTERS = ["D","L","M","M","J","V","S"];
-
 /* =========================================================
    3. MOTOR DE CÁLCULO DE ACTIVIDADES & FECHAS MANUALES
 ========================================================= */
 function bar(key,label,resp,color,start,end,zone,textDark,bordered){
   return {key,label,responsable:resp,color,start,end:end||start,zone:zone||"main",textDark:!!textDark,bordered:!!bordered};
 }
-
 function applyCustomDates(sh, acts){
   if(!sh.customDates) return acts;
   return acts.map(a=>{
@@ -665,7 +659,6 @@ function applyCustomDates(sh, acts){
     return a;
   });
 }
-
 function computeActivities(sh){
   const d0 = parseISO(sh.fechaInstruccion);
   if(!d0) return [];
@@ -673,7 +666,6 @@ function computeActivities(sh){
   if(sh.tipo === "DEPCO") return computeDepco(sh, d0);
   return computeConsolidadoOTN(sh, d0);
 }
-
 function computeConsumo(sh, d0){
   const a1 = d0;
   const a2 = addBusinessDays(a1,1);
@@ -684,10 +676,8 @@ function computeConsumo(sh, d0){
   
   const cdStart = sh.fechaArriboCD ? parseISO(sh.fechaArriboCD) : addBusinessDays(a7,6);
   const cdEnd = addBusinessDays(cdStart,2);
-
   const intercompanyDate = addBusinessDays(cdStart, -7);
   const trasladosDate = addBusinessDays(cdStart, -4);
-
   const defaultBars = [
     bar("importacion","Instrucciones de Importación","Producto","#C00000",a1,a1,"main"),
     bar("embarque","Instrucciones de Embarque","COMEX","#A6A6A6",a2,a2,"main",true),
@@ -702,7 +692,6 @@ function computeConsumo(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
-
 function computeDepco(sh, d0){
   const b1 = d0;
   const b2 = addBusinessDays(b1,1);
@@ -732,7 +721,6 @@ function computeDepco(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
-
 function computeConsolidadoOTN(sh, d0){
   const c1 = d0;
   const c2 = addBusinessDays(c1,1);
@@ -754,7 +742,6 @@ function computeConsolidadoOTN(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
-
 /* =========================================================
    4. RENDER GANTT & DRAG AND DROP
 ========================================================= */
@@ -812,9 +799,7 @@ function renderShipmentGantt(sh){
       <td>${a.responsable}</td>
       <td>${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' — '+fmtDMY(a.end):''}</td>
     </tr>`).join("");
-
   const hasCustomDates = sh.customDates && Object.keys(sh.customDates).length > 0;
-
   return `
   <div class="shipment-block">
     <div class="shipment-header">
@@ -839,11 +824,9 @@ function renderShipmentGantt(sh){
     </div>
   </div>`;
 }
-
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-
 function renderBrandView(marca, containerId){
   const container = document.getElementById(containerId);
   const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
@@ -854,12 +837,10 @@ function renderBrandView(marca, containerId){
   container.innerHTML = list.map(renderShipmentGantt).join("");
   bindGanttDragAndDrop();
 }
-
 /* =========================================================
    SISTEMA DRAG & DROP DE ACTIVIDADES
 ========================================================= */
 let draggedBarPayload = null;
-
 function bindGanttDragAndDrop(){
   document.querySelectorAll(".act-bar[draggable=true]").forEach(bar=>{
     bar.addEventListener("dragstart", (e)=>{
@@ -877,7 +858,6 @@ function bindGanttDragAndDrop(){
       document.querySelectorAll(".drop-target.drag-over").forEach(el=>el.classList.remove("drag-over"));
     });
   });
-
   document.querySelectorAll(".drop-target").forEach(track=>{
     track.addEventListener("dragover", (e)=>{
       e.preventDefault();
@@ -897,13 +877,10 @@ function bindGanttDragAndDrop(){
         }catch(err){}
       }
       if(!data || data.shipmentId !== track.dataset.shipmentId) return;
-
       const targetDate = parseISO(track.dataset.date);
       if(!targetDate) return;
-
       const newStart = targetDate;
       const newEnd = new Date(targetDate.getTime() + (data.duration * 86400000));
-
       const sh = state.shipmentsMap[data.shipmentId];
       if(!sh) return;
       if(!sh.customDates) sh.customDates = {};
@@ -911,14 +888,12 @@ function bindGanttDragAndDrop(){
         start: toISO(newStart),
         end: toISO(newEnd)
       };
-
       saveShipment(data.shipmentId, sh);
       renderAll();
       showToast("📅 Fecha ajustada correctamente");
     });
   });
 }
-
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -931,9 +906,8 @@ document.addEventListener("click", (e)=>{
     showToast("↺ Fechas automáticas restablecidas");
   }
 });
-
 /* =========================================================
-   5. VISTA CONSOLIDADA
+   5. VISTA CONSOLIDADA (GANTT MENSUAL)
 ========================================================= */
 function getAvailableMonths(){
   const set = new Set();
@@ -1398,76 +1372,102 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
 });
 
 /* =========================================================
-   9. HOJA DE RESÚMENES (DATOS FIJOS / SOLO LECTURA)
+   9. HOJA DE RESÚMENES (VISTA CONSOLIDADA COMPATIBLE CON EXCEL)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-const CHANNEL_COLUMNS = ["MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP","EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA","TRANS-EMELEC","TRANS","DEPSI","DEPCO"];
+const CHANNEL_COLUMNS = [
+  "MARATHON","TAF","BIG HEAD","OUTLET","SNEAKERS","WEB","TELESHOP",
+  "EXPLORER","SPOMA","TIENDAS","MARKETING","MAYORISTA","KAO","EDCA",
+  "TRANS-EMELEC","TRANS","DEPSI","DEPCO"
+];
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
 const GRUPOS = ["Calzado","Ropa","Accesorios"];
 
 function normTxt(s){
-  if(s===null || s===undefined) return "";
+  if(s === null || s === undefined) return "";
   return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 }
+
 const CHANNEL_ALIAS_MAP = (function(){
   const raw = {
-    "MARATHON":["MARATHON","MARATHON SPORTS","MARATHONSPORTS"],
-    "TAF":["TAF"],
-    "BIG HEAD":["BIG HEAD","BIGHEAD","BIG-HEAD"],
-    "OUTLET":["OUTLET","OUTLETS"],
-    "SNEAKERS":["SNEAKERS","SNEAKER"],
-    "WEB":["WEB","PAGINA WEB","ECOMMERCE","E-COMMERCE","E COMMERCE"],
-    "TELESHOP":["TELESHOP","TELE SHOP"],
-    "EXPLORER":["EXPLORER"],
-    "SPOMA":["SPOMA"],
-    "TIENDAS":["TIENDAS","TIENDA"],
-    "MARKETING":["MARKETING","MKT"],
-    "MAYORISTA":["MAYORISTA","MAYORISTAS"],
-    "KAO":["KAO"],
-    "EDCA":["EDCA"],
-    "TRANS-EMELEC":["TRANS-EMELEC","TRANS EMELEC","TRANSEMELEC"],
-    "TRANS":["TRANS","TRASLADO","TRASLADOS"],
-    "DEPSI":["DEPSI"],
-    "DEPCO":["DEPCO"]
+    "MARATHON": ["MARATHON", "MARATHON SPORTS", "MARATHONSPORTS"],
+    "TAF": ["TAF"],
+    "BIG HEAD": ["BIG HEAD", "BIGHEAD", "BIG-HEAD"],
+    "OUTLET": ["OUTLET", "OUTLETS"],
+    "SNEAKERS": ["SNEAKERS", "SNEAKER"],
+    "WEB": ["WEB", "PAGINA WEB", "ECOMMERCE", "E-COMMERCE", "E COMMERCE", "INTERNET"],
+    "TELESHOP": ["TELESHOP", "TELE SHOP"],
+    "EXPLORER": ["EXPLORER"],
+    "SPOMA": ["SPOMA"],
+    "TIENDAS": ["TIENDAS", "TIENDA"],
+    "MARKETING": ["MARKETING", "MKT"],
+    "MAYORISTA": ["MAYORISTA", "MAYORISTAS"],
+    "KAO": ["KAO"],
+    "EDCA": ["EDCA"],
+    "TRANS-EMELEC": ["TRANS-EMELEC", "TRANS EMELEC", "TRANSEMELEC"],
+    "TRANS": ["TRANS", "TRASLADO", "TRASLADOS"],
+    "DEPSI": ["DEPSI"],
+    "DEPCO": ["DEPCO", "BODEGA DEPCO", "DEPCO QUITO", "DEPCO GYE", "STOCK DEPCO", "DEPOSITO COMERCIAL", "DEPÓSITO COMERCIAL"]
   };
   const map = {};
-  Object.keys(raw).forEach(canon=>{ raw[canon].forEach(alias=> map[normTxt(alias)] = canon); });
+  Object.keys(raw).forEach(canon => {
+    raw[canon].forEach(alias => map[normTxt(alias)] = canon);
+  });
   return map;
 })();
+
 function resolveChannel(raw, allowedList){
   const key = normTxt(raw);
-  const canon = CHANNEL_ALIAS_MAP[key];
+  if(!key) return null;
+  // Búsqueda prioritaria directa o por contención para DEPCO
+  if(key.includes("DEPCO")) {
+    if(!allowedList || allowedList.includes("DEPCO")) return "DEPCO";
+  }
+  let canon = CHANNEL_ALIAS_MAP[key];
+  if(!canon){
+    for(const alias in CHANNEL_ALIAS_MAP){
+      if(key === alias || key.includes(alias)){
+        canon = CHANNEL_ALIAS_MAP[alias];
+        break;
+      }
+    }
+  }
   if(!canon) return null;
   if(allowedList && !allowedList.includes(canon)) return null;
   return canon;
 }
+
 function resolveGrupo(raw){
   const key = normTxt(raw);
-  if(key==="C" || key==="CALZADO") return "Calzado";
-  if(key==="R" || key==="ROPA") return "Ropa";
-  if(key==="A" || key==="ACCESORIOS" || key==="ACCESORIO") return "Accesorios";
+  if(key === "C" || key.startsWith("CALZ")) return "Calzado";
+  if(key === "R" || key.startsWith("ROP")) return "Ropa";
+  if(key === "A" || key.startsWith("ACC")) return "Accesorios";
   return null;
 }
+
 function resolveMarca(raw){
   const key = normTxt(raw);
-  if(key==="2" || key==="002" || key.indexOf("ADIDAS")>-1) return "ADIDAS";
-  if(key==="1" || key==="004" || key.indexOf("REEBOK")>-1) return "REEBOK";
+  if(key === "2" || key === "002" || key.includes("ADIDAS")) return "ADIDAS";
+  if(key === "1" || key === "004" || key.includes("REEBOK")) return "REEBOK";
   return key || "ADIDAS";
 }
+
 function blankChannels(){
   const o = {};
-  CHANNEL_COLUMNS.forEach(c=> o[c]=0);
+  CHANNEL_COLUMNS.forEach(c => o[c] = 0);
   return o;
 }
-const resumenState = { mes: "OCTUBRE", months: {} };
-RESUMEN_MESES.forEach(m=> resumenState.months[m] = []);
+
+const resumenState = { mes: "JULIO", months: {} };
+RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
+
 function resumenSave(){
   if(cloudMode){
     resumenRef.set(resumenState.months);
   }
 }
 
-// Búsqueda del embarque en la Tabla de Entradas
+// Búsqueda inteligente del embarque en la Tabla de Entradas
 function findShipmentInfo(nombreEmbarque){
   const target = normTxt(nombreEmbarque);
   if(!target) return null;
@@ -1479,149 +1479,212 @@ function findShipmentInfo(nombreEmbarque){
 }
 
 function rowKey(block, embarque, marca, grupo){
-  return block+"||"+normTxt(embarque)+"||"+normTxt(marca)+"||"+grupo;
+  return block + "||" + normTxt(embarque) + "||" + normTxt(marca) + "||" + grupo;
 }
+
 function ensureRow(mes, block, embarque, marca, grupo, meta){
   if(!Array.isArray(resumenState.months[mes])) resumenState.months[mes] = [];
   const list = resumenState.months[mes];
   const key = rowKey(block, embarque, marca, grupo);
-  let row = list.find(r=> rowKey(r.block, r.embarque, r.marca, r.grupo) === key);
+  let row = list.find(r => rowKey(r.block, r.embarque, r.marca, r.grupo) === key);
   if(!row){
     row = {
-      id: generateId(), block, categoria: grupo, mes, embarque, marca, grupo,
-      tipoImportacion: (meta&&meta.tipoImportacion)||"", fechaArriboDepco:(meta&&meta.fechaArriboDepco)||"",
-      consolidado:(meta&&meta.consolidado)||"", fechaArriboCD:(meta&&meta.fechaArriboCD)||"",
-      channels: blankChannels(), observaciones:""
+      id: generateId(),
+      block,
+      mes,
+      embarque,
+      marca,
+      grupo,
+      tipoImportacion: (meta && meta.tipoImportacion) || "",
+      fechaArriboDepco: (meta && meta.fechaArriboDepco) || "",
+      consolidado: (meta && meta.consolidado) || "",
+      fechaArriboCD: (meta && meta.fechaArriboCD) || "",
+      channels: blankChannels(),
+      observaciones: ""
     };
     list.push(row);
   }
   return row;
 }
+
 function ensureTriadRows(mes, block, embarque, marca, meta){
-  GRUPOS.forEach(g=> ensureRow(mes, block, embarque, marca, g, meta));
+  GRUPOS.forEach(g => ensureRow(mes, block, embarque, marca, g, meta));
 }
-function findHeaderRow(aoa, requiredNames){
-  const maxScan = Math.min(aoa.length, 25);
-  for(let r=0; r<maxScan; r++){
+
+function findHeaderRow(aoa, requiredAliases){
+  const maxScan = Math.min(aoa.length, 30);
+  for(let r = 0; r < maxScan; r++){
     const row = aoa[r] || [];
     const normRow = row.map(normTxt);
-    if(requiredNames.every(name => normRow.includes(name))){
+    const matched = requiredAliases.every(aliasGroup => {
+      return aliasGroup.some(alias => normRow.some(col => col.includes(alias)));
+    });
+    if(matched){
       const colMap = {};
-      normRow.forEach((val,idx)=>{ if(val && colMap[val]===undefined) colMap[val]=idx; });
-      return {rowIndex:r, colMap};
+      normRow.forEach((val, idx) => {
+        if(val && colMap[val] === undefined) colMap[val] = idx;
+      });
+      return { rowIndex: r, colMap, rawRow: normRow };
     }
   }
   return null;
 }
-function cellStr(row, idx){ return idx===undefined || idx===null || row[idx]===undefined || row[idx]===null ? "" : String(row[idx]).trim(); }
+
+function getColIdx(colMap, aliases){
+  for(const alias of aliases){
+    for(const key in colMap){
+      if(key === alias || key.includes(alias)) return colMap[key];
+    }
+  }
+  return undefined;
+}
+
+function cellStr(row, idx){
+  return (idx === undefined || idx === null || row[idx] === undefined || row[idx] === null) ? "" : String(row[idx]).trim();
+}
+
 function cellNum(row, idx){
-  if(idx===undefined || idx===null || row[idx]===undefined || row[idx]===null || row[idx]==="") return 0;
-  const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g,""));
+  if(idx === undefined || idx === null || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
+  const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
   return isNaN(n) ? 0 : n;
 }
+
+// 1. OC Consolidada
 function tryParseFormatA(aoa, mes, log){
-  const header = findHeaderRow(aoa, ["EMBARQUE","MARCA","GRUPO","CANAL FINAL","CANTIDAD"]);
+  const header = findHeaderRow(aoa, [["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"], ["CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
-  const {rowIndex, colMap} = header;
-  let count=0;
-  for(let r=rowIndex+1; r<aoa.length; r++){
-    const row = aoa[r]||[];
-    const embarque = cellStr(row, colMap["EMBARQUE"]);
+  const { rowIndex, colMap } = header;
+  const embCol = getColIdx(colMap, ["EMBARQUE"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
+
+  let count = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const embarque = cellStr(row, embCol);
     if(!embarque) continue;
-    const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
-    const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-    const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
-    const cantidad = cellNum(row, colMap["CANTIDAD"]);
-    if(!marca || !grupo || cantidad===0) continue;
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const canal = resolveChannel(cellStr(row, cnlCol), null);
+    const cantidad = cellNum(row, qtyCol);
+    if(!marca || !grupo || cantidad === 0) continue;
+
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
-    if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
+    if(canal){
+      targetRow.channels[canal] = (targetRow.channels[canal] || 0) + cantidad;
+    }
     count++;
   }
-  log.push({type:"ok", msg:`OC Consolidada: ${count} registros procesados.`});
+  log.push({ type: "ok", msg: `OC Consolidada: ${count} registros procesados.` });
   return true;
 }
+
+// 2. OC LPN Consolidado
 function tryParseFormatB(aoa, mes, log){
-  const header = findHeaderRow(aoa, ["INSTRUCCION","EMBARQUE","MARCA","GRUPO","CANAL FINAL"]);
+  const header = findHeaderRow(aoa, [["INSTRUCCION"], ["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"]]);
   if(!header) return false;
-  const {rowIndex, colMap} = header;
-  const qtyCol = colMap["LPN DETAIL SIZE VALUE"] !== undefined ? colMap["LPN DETAIL SIZE VALUE"] : colMap["CANTIDAD"];
-  let count=0;
-  for(let r=rowIndex+1; r<aoa.length; r++){
-    const row = aoa[r]||[];
-    if(normTxt(cellStr(row, colMap["INSTRUCCION"])) !== "IMPORTAR") continue;
-    const embarque = cellStr(row, colMap["EMBARQUE"]);
+  const { rowIndex, colMap } = header;
+  const instCol = getColIdx(colMap, ["INSTRUCCION"]);
+  const embCol = getColIdx(colMap, ["EMBARQUE"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["LPN DETAIL SIZE VALUE", "CANTIDAD", "QTY", "UNIDADES"]);
+
+  let count = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const instruccion = normTxt(cellStr(row, instCol));
+    if(instruccion && !instruccion.includes("IMPORTAR")) continue;
+    const embarque = cellStr(row, embCol);
     if(!embarque) continue;
-    const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
-    const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-    const canal = resolveChannel(cellStr(row, colMap["CANAL FINAL"]), null);
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const canal = resolveChannel(cellStr(row, cnlCol), null);
     const cantidad = cellNum(row, qtyCol);
-    if(!marca || !grupo || cantidad===0) continue;
+    if(!marca || !grupo || cantidad === 0) continue;
+
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
-    if(canal) targetRow.channels[canal] = (targetRow.channels[canal]||0) + cantidad;
+    if(canal){
+      targetRow.channels[canal] = (targetRow.channels[canal] || 0) + cantidad;
+    }
     count++;
   }
-  log.push({type:"ok", msg:`OC LPN Consolidado: ${count} registros IMPORTAR procesados.`});
+  log.push({ type: "ok", msg: `OC LPN Consolidado: ${count} registros procesados.` });
   return true;
 }
+
+// 3. Intercompany
 function tryParseFormatC(aoa, mes, log){
-  const header = findHeaderRow(aoa, ["INTERCOMPANY","MARCA","GRUPO"]);
+  const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"]]);
   if(!header) return false;
-  const {rowIndex, colMap} = header;
-  const destColIdx = colMap["CONCEPTO"] !== undefined ? colMap["CONCEPTO"] : colMap["BODEGA"];
-  const qtyCol = colMap["CANTIDAD"];
-  let count=0;
-  for(let r=rowIndex+1; r<aoa.length; r++){
-    const row = aoa[r]||[];
-    const intercompany = cellStr(row, colMap["INTERCOMPANY"]);
+  const { rowIndex, colMap } = header;
+  const interCol = getColIdx(colMap, ["INTERCOMPANY"]);
+  const mrcCol = getColIdx(colMap, ["MARCA"]);
+  const grpCol = getColIdx(colMap, ["GRUPO"]);
+  const destCol = getColIdx(colMap, ["CONCEPTO", "BODEGA", "CANAL", "DESTINO"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
+
+  let count = 0;
+  for(let r = rowIndex + 1; r < aoa.length; r++){
+    const row = aoa[r] || [];
+    const intercompany = cellStr(row, interCol);
     if(!intercompany) continue;
-    const marca = resolveMarca(cellStr(row, colMap["MARCA"]));
-    const grupo = resolveGrupo(cellStr(row, colMap["GRUPO"]));
-    const destino = resolveChannel(cellStr(row, destColIdx), INTERCOMPANY_CHANNELS);
+    const marca = resolveMarca(cellStr(row, mrcCol));
+    const grupo = resolveGrupo(cellStr(row, grpCol));
+    const destino = resolveChannel(cellStr(row, destCol), INTERCOMPANY_CHANNELS);
     const cantidad = cellNum(row, qtyCol);
-    if(!marca || !grupo || cantidad===0) continue;
+    if(!marca || !grupo || cantidad === 0) continue;
+
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
-    if(destino) targetRow.channels[destino] = (targetRow.channels[destino]||0) + cantidad;
+    if(destino){
+      targetRow.channels[destino] = (targetRow.channels[destino] || 0) + cantidad;
+    }
     count++;
   }
-  log.push({type:"ok", msg:`Intercompany: ${count} registros procesados.`});
+  log.push({ type: "ok", msg: `Intercompany: ${count} registros procesados.` });
   return true;
 }
+
 function processWorkbook(workbook, mes, fileName, log){
   let matched = false;
   for(const sheetName of workbook.SheetNames){
     const ws = workbook.Sheets[sheetName];
-    const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:""});
-    if(aoa.length===0) continue;
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+    if(aoa.length === 0) continue;
     if(tryParseFormatB(aoa, mes, log) || tryParseFormatC(aoa, mes, log) || tryParseFormatA(aoa, mes, log)){
       matched = true;
     }
   }
   if(!matched){
-    log.push({type:"err", msg:`"${fileName}": no se reconoció formato válido.`});
+    log.push({ type: "err", msg: `"${fileName}": no se reconoció formato válido.` });
   } else {
-    log.push({type:"ok", msg:`"${fileName}" sincronizado en ${mes}.`});
+    log.push({ type: "ok", msg: `"${fileName}" consolidado en ${mes}.` });
   }
 }
+
 function handleResumenFiles(fileList){
   const log = [];
   const files = Array.from(fileList);
   let pending = files.length;
-  if(pending===0) return;
-  files.forEach(file=>{
+  if(pending === 0) return;
+  files.forEach(file => {
     const reader = new FileReader();
-    reader.onload = (e)=>{
-      try{
+    reader.onload = (e) => {
+      try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, {type:"array", cellDates:false});
+        const workbook = XLSX.read(data, { type: "array", cellDates: false });
         processWorkbook(workbook, resumenState.mes, file.name, log);
-      }catch(err){
-        log.push({type:"err", msg:`"${file.name}": error al leer (${err.message}).`});
+      } catch(err) {
+        log.push({ type: "err", msg: `"${file.name}": error al leer (${err.message}).` });
       }
       pending--;
-      if(pending===0){
+      if(pending === 0){
         resumenSave();
         renderResumen();
         showResumenLog(log);
@@ -1630,31 +1693,34 @@ function handleResumenFiles(fileList){
     reader.readAsArrayBuffer(file);
   });
 }
+
 function showResumenLog(log){
   const el = document.getElementById("resumenImportLog");
-  if(log.length===0){ el.style.display="none"; return; }
+  if(log.length === 0){ el.style.display = "none"; return; }
   el.style.display = "block";
-  el.innerHTML = log.map(l=> `<div class="${l.type==='err'?'err':'ok'}">${l.type==='err'?'❌':'✅'} ${escapeHtml(l.msg)}</div>`).join("");
+  el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
+
 function rowCantidadTotal(row){
-  return CHANNEL_COLUMNS.reduce((sum,c)=> sum + (Number(row.channels[c])||0), 0);
+  return CHANNEL_COLUMNS.reduce((sum, c) => sum + (Number(row.channels[c]) || 0), 0);
 }
+
 function renderResumenThead(){
   const thead = document.getElementById("resumenThead");
   thead.innerHTML = `
     <tr>
-      <th class="th-left" style="min-width:140px;">INGRESOS EMBARQUE</th>
-      <th style="min-width:80px;">MES</th>
+      <th style="min-width:140px;">INGRESOS EMBARQUE</th>
+      <th style="min-width:70px;">MES</th>
       <th style="min-width:120px;">EMBARQUE</th>
       <th style="min-width:110px;">TIPO DE IMPORTACIÓN</th>
       <th style="min-width:130px;">FECHA ARRIBO DEPCO</th>
       <th style="min-width:110px;">CONSOLIDADO</th>
       <th style="min-width:130px;">FECHA ARRIBO CD</th>
-      <th style="min-width:85px;">MARCA</th>
-      <th style="min-width:90px;">GRUPO</th>
-      <th style="min-width:90px;background:#15223c;">CANTIDAD TOTAL</th>
-      ${CHANNEL_COLUMNS.map(c=> `<th>${escapeHtml(c)}</th>`).join("")}
-      <th style="min-width:180px;">OBSERVACIONES</th>
+      <th style="min-width:80px;">MARCA</th>
+      <th style="min-width:85px;">GRUPO</th>
+      <th style="min-width:90px;">CANTIDAD TOTAL</th>
+      ${CHANNEL_COLUMNS.map(c => `<th style="min-width:75px;">${escapeHtml(c)}</th>`).join("")}
+      <th style="min-width:160px;">OBSERVACIONES</th>
     </tr>`;
 }
 
@@ -1662,40 +1728,35 @@ function renderResumen(){
   renderResumenThead();
   const rawList = resumenState.months[resumenState.mes] || [];
   const emptyEl = document.getElementById("emptyResumen");
-  document.querySelectorAll(".month-btn").forEach(b=> b.classList.toggle("active", b.dataset.mes===resumenState.mes));
-  
-  if(rawList.length===0){
+  document.querySelectorAll(".month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
+
+  if(rawList.length === 0){
     document.getElementById("resumenTbody").innerHTML = "";
     emptyEl.style.display = "block";
     return;
   }
   emptyEl.style.display = "none";
 
-  // Agrupamiento por Bloque -> Embarque -> Marca
   const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES"];
   const structure = {};
-  blocks.forEach(b=> structure[b] = []);
+  blocks.forEach(b => structure[b] = []);
 
-  rawList.forEach(r=>{
+  rawList.forEach(r => {
     const bKey = (r.block === "INTERCOMPANIES" || r.block === "INTERCOMPANY") ? "INTERCOMPANIES" : "INGRESOS EMBARQUE";
     let bList = structure[bKey];
     let embGroup = bList.find(e => normTxt(e.embarque) === normTxt(r.embarque));
     if(!embGroup){
       embGroup = {
         embarque: r.embarque,
-        tipoImportacion: r.tipoImportacion || "",
-        fechaArriboDepco: r.fechaArriboDepco || "",
-        consolidado: r.consolidado || "",
-        fechaArriboCD: r.fechaArriboCD || "",
         mes: r.mes || resumenState.mes,
         marcas: []
       };
       bList.push(embGroup);
     }
-    const resolvedMarca = resolveMarca(r.marca);
-    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(resolvedMarca));
+    const resolvedM = resolveMarca(r.marca);
+    let mGroup = embGroup.marcas.find(m => normTxt(m.marca) === normTxt(resolvedM));
     if(!mGroup){
-      mGroup = { marca: resolvedMarca, rows: {} };
+      mGroup = { marca: resolvedM, rows: {} };
       embGroup.marcas.push(mGroup);
     }
     mGroup.rows[r.grupo] = r;
@@ -1703,19 +1764,22 @@ function renderResumen(){
 
   let html = "";
 
-  // Renderizado por bloques estructurados
-  blocks.forEach(blockName=>{
+  blocks.forEach((blockName, blockIdx) => {
     const embList = structure[blockName];
     if(embList.length === 0) return;
 
-    html += `<tr class="block-title-row">
-      <td colspan="${10 + CHANNEL_COLUMNS.length + 1}">
-        📂 <b>${blockName}</b> — ${resumenState.mes}
-      </td>
-    </tr>`;
+    if(blockIdx > 0){
+      html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
+    }
 
-    embList.forEach((emb, embIdx)=>{
-      // Cruzar información con la Tabla de Entradas
+    const totalBlockRows = embList.reduce((acc, emb) => {
+      return acc + emb.marcas.reduce((mAcc) => mAcc + GRUPOS.length, 0);
+    }, 0);
+
+    let isFirstRowOfBlock = true;
+
+    embList.forEach((emb) => {
+      // Cruzar datos dinámicamente con la Tabla de Entradas
       const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
       let displayTipo = "-";
       let displayDepco = "-";
@@ -1725,75 +1789,80 @@ function renderResumen(){
       if(shInfo){
         displayTipo = tipoLabel(shInfo.tipo);
         displayConsolidado = (shInfo.consolidado && shInfo.consolidado.trim()) ? shInfo.consolidado.trim() : "-";
-        
+
         if(shInfo.fechaArriboDepco){
           displayDepco = fmtDMY(parseISO(shInfo.fechaArriboDepco));
         } else if(shInfo.tipo === "DEPCO"){
           const acts = computeActivities(shInfo);
-          const depAct = acts.find(a=>a.key==="ingreso_depco");
+          const depAct = acts.find(a => a.key === "ingreso_depco");
           if(depAct) displayDepco = `Del ${fmtDMY(depAct.start)} al ${fmtDMY(depAct.end)}`;
         }
-        
+
         if(shInfo.fechaArriboCD){
           displayCD = fmtDMY(parseISO(shInfo.fechaArriboCD));
         } else {
           const acts = computeActivities(shInfo);
-          const cdAct = acts.find(a=>a.key==="ingreso_cd");
+          const cdAct = acts.find(a => a.key === "ingreso_cd");
           if(cdAct) displayCD = `Del ${fmtDMY(cdAct.start)} al ${fmtDMY(cdAct.end)}`;
         }
-      } else {
-        displayTipo = emb.tipoImportacion || "-";
-        displayDepco = emb.fechaArriboDepco || "-";
-        displayConsolidado = emb.consolidado || "-";
-        displayCD = emb.fechaArriboCD || "-";
       }
 
-      const totalEmbarqueRows = emb.marcas.reduce((acc, m) => acc + GRUPOS.length, 0);
+      const totalEmbarqueRows = emb.marcas.reduce((acc) => acc + GRUPOS.length, 0);
       let isFirstRowOfEmbarque = true;
 
-      emb.marcas.forEach((mObj, mIdx)=>{
+      emb.marcas.forEach((mObj) => {
         const totalMarcaRows = GRUPOS.length;
 
-        GRUPOS.forEach((grupoName, gIdx)=>{
-          const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {
-            tipoImportacion: displayTipo,
-            fechaArriboDepco: displayDepco,
-            consolidado: displayConsolidado,
-            fechaArriboCD: displayCD
-          });
+        GRUPOS.forEach((grupoName, gIdx) => {
+          const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
           const totalRowQty = rowCantidadTotal(row);
 
-          html += `<tr class="${(isFirstRowOfEmbarque && embIdx > 0) ? 'group-sep-row' : ''}">`;
+          html += `<tr>`;
 
-          // Celdas del embarque vinculadas
+          // Columna A (Bloque) y Columna B (Mes)
+          if(isFirstRowOfBlock){
+            html += `<td rowspan="${totalBlockRows}" class="block-side-cell">${blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : ""}</td>`;
+            html += `<td rowspan="${totalBlockRows}" style="text-align:center;font-weight:700;">${escapeHtml(resumenState.mes)}</td>`;
+            isFirstRowOfBlock = false;
+          }
+
+          // Columnas Embarque y Tipo de Importación
           if(isFirstRowOfEmbarque){
-            html += `<td rowspan="${totalEmbarqueRows}" class="block-side-cell">${blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : ""}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:700;">${escapeHtml(emb.mes)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell"><b>${escapeHtml(emb.embarque)}</b></td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayTipo)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayDepco)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayConsolidado)}</td>`;
-            html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;font-weight:600;">${escapeHtml(displayCD)}</td>`;
+            html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell">${escapeHtml(emb.embarque)}</td>`;
+            if(blockName === "INTERCOMPANIES"){
+              html += `<td rowspan="${totalEmbarqueRows}" colspan="4" style="text-align:center;">-</td>`;
+            } else {
+              html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(displayTipo)}</td>`;
+            }
           }
 
-          // Celda de Marca
+          // Columnas DEPCO, Consolidado y CD
+          if(blockName !== "INTERCOMPANIES" && gIdx === 0){
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayDepco)}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayConsolidado)}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayCD)}</td>`;
+          }
+
+          // Columna Marca
           if(gIdx === 0){
-            html += `<td rowspan="${totalMarcaRows}" class="marca-cell ${mObj.marca}">${escapeHtml(mObj.marca)}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" class="marca-cell">${escapeHtml(mObj.marca)}</td>`;
           }
 
-          // Grupo y Cantidad Total (Solo Lectura)
+          // Columna Grupo
           html += `<td class="grupo-cell">${escapeHtml(grupoName)}</td>`;
-          html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : "-"}</td>`;
 
-          // Celdas fijas de Canales (Solo Lectura)
-          CHANNEL_COLUMNS.forEach(c=>{
+          // Columna Cantidad Total
+          html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : ""}</td>`;
+
+          // Columnas de Canales
+          CHANNEL_COLUMNS.forEach(c => {
             const val = row.channels[c] || 0;
-            html += `<td class="channel-val">${val === 0 ? "-" : Number(val).toLocaleString()}</td>`;
+            html += `<td class="channel-val">${val === 0 ? "" : Number(val).toLocaleString()}</td>`;
           });
 
-          // Observaciones por marca (Solo Lectura)
+          // Observaciones
           if(gIdx === 0){
-            html += `<td rowspan="${totalMarcaRows}" style="font-size:11px;color:var(--muted);">${escapeHtml(row.observaciones||"")}</td>`;
+            html += `<td rowspan="${totalMarcaRows}" style="font-size:11px;color:var(--muted);text-align:center;">${escapeHtml(row.observaciones || "")}</td>`;
           }
 
           html += `</tr>`;
@@ -1803,14 +1872,16 @@ function renderResumen(){
     });
   });
 
+  html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
+
   // ========== TOTALES GENERALES ==========
   const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
   const grandTotals = blankChannels();
 
-  rawList.forEach(r=>{
+  rawList.forEach(r => {
     const g = r.grupo;
     if(totalsByGrupo[g]){
-      CHANNEL_COLUMNS.forEach(c=>{
+      CHANNEL_COLUMNS.forEach(c => {
         const q = Number(r.channels[c]) || 0;
         totalsByGrupo[g][c] += q;
         grandTotals[c] += q;
@@ -1818,29 +1889,36 @@ function renderResumen(){
     }
   });
 
-  html += `<tr class="group-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}" style="background:#f4f6fa;height:10px;"></td></tr>`;
-
   // Total por Grupo
-  GRUPOS.forEach((gName, idx)=>{
+  GRUPOS.forEach((gName, idx) => {
     const gChannels = totalsByGrupo[gName];
-    const gTotal = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (gChannels[c]||0), 0);
-    html += `<tr class="totals-group-row">
-      ${idx === 0 ? `<td rowspan="3" colspan="8" class="subtot-label">TOTAL POR GRUPO</td>` : ''}
-      <td style="font-weight:800;background:#fdf0cf;color:#5c4600;">${gName}</td>
-      <td class="total-cell" style="background:#ffeaa7;font-weight:800;">${gTotal ? gTotal.toLocaleString() : 0}</td>
-      ${CHANNEL_COLUMNS.map(c=> `<td style="text-align:right;padding:4px 6px;font-weight:700;">${gChannels[c] ? gChannels[c].toLocaleString() : 0}</td>`).join("")}
-      <td></td>
-    </tr>`;
+    const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
+
+    html += `<tr class="totals-group-row">`;
+    if(idx === 0){
+      html += `<td colspan="7" rowspan="3" style="border:none;"></td>`;
+      html += `<td rowspan="3" class="subtot-label">Total por grupo</td>`;
+    }
+    html += `<td class="grupo-cell">${escapeHtml(gName)}</td>`;
+    html += `<td class="total-cell">${gTotal ? gTotal.toLocaleString() : 0}</td>`;
+    CHANNEL_COLUMNS.forEach(c => {
+      const q = gChannels[c] || 0;
+      html += `<td class="channel-val">${q ? q.toLocaleString() : 0}</td>`;
+    });
+    if(idx === 0){
+      html += `<td rowspan="3" style="border:none;"></td>`;
+    }
+    html += `</tr>`;
   });
 
-  // Total General
-  const grandTotalAll = CHANNEL_COLUMNS.reduce((sum,c)=> sum + (grandTotals[c]||0), 0);
+  // Cantidad Total General
+  const grandTotalAll = CHANNEL_COLUMNS.reduce((sum, c) => sum + (grandTotals[c] || 0), 0);
   html += `<tr class="grand-total-row">
-    <td colspan="8" class="grand-label">CANTIDAD TOTAL</td>
-    <td style="background:#15223c;"></td>
+    <td colspan="7" style="border:none;background:transparent;"></td>
+    <td colspan="2" class="grand-label">CANTIDAD TOTAL</td>
     <td class="grand-num">${grandTotalAll ? grandTotalAll.toLocaleString() : 0}</td>
-    ${CHANNEL_COLUMNS.map(c=> `<td class="grand-num">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
-    <td></td>
+    ${CHANNEL_COLUMNS.map(c => `<td class="grand-channel">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
+    <td style="border:none;background:transparent;"></td>
   </tr>`;
 
   document.getElementById("resumenTbody").innerHTML = html;
@@ -1851,8 +1929,8 @@ function populateResumenGroupSelect(list){
   const sel = document.getElementById("resumenGroupSelect");
   const seen = new Set();
   let opts = `<option value="">— Selecciona —</option>`;
-  list.forEach(r=>{
-    const gk = r.block+"||"+r.embarque+"||"+r.marca;
+  list.forEach(r => {
+    const gk = r.block + "||" + r.embarque + "||" + r.marca;
     if(seen.has(gk)) return;
     seen.add(gk);
     opts += `<option value="${escapeHtml(gk)}">${escapeHtml(r.embarque)} · ${escapeHtml(r.marca)}</option>`;
@@ -1860,7 +1938,7 @@ function populateResumenGroupSelect(list){
   sel.innerHTML = opts;
 }
 
-document.getElementById("resumenMonthTabs").addEventListener("click",(e)=>{
+document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".month-btn");
   if(!btn) return;
   resumenState.mes = btn.dataset.mes;
@@ -1869,27 +1947,27 @@ document.getElementById("resumenMonthTabs").addEventListener("click",(e)=>{
 
 const resumenDropzone = document.getElementById("resumenDropzone");
 const resumenFileInput = document.getElementById("resumenFileInput");
-resumenDropzone.addEventListener("click", ()=> resumenFileInput.click());
-resumenFileInput.addEventListener("change",(e)=>{ handleResumenFiles(e.target.files); e.target.value = ""; });
-resumenDropzone.addEventListener("dragover",(e)=>{ e.preventDefault(); resumenDropzone.classList.add("dragover"); });
-resumenDropzone.addEventListener("dragleave",()=>{ resumenDropzone.classList.remove("dragover"); });
-resumenDropzone.addEventListener("drop",(e)=>{
+resumenDropzone.addEventListener("click", () => resumenFileInput.click());
+resumenFileInput.addEventListener("change", (e) => { handleResumenFiles(e.target.files); e.target.value = ""; });
+resumenDropzone.addEventListener("dragover", (e) => { e.preventDefault(); resumenDropzone.classList.add("dragover"); });
+resumenDropzone.addEventListener("dragleave", () => { resumenDropzone.classList.remove("dragover"); });
+resumenDropzone.addEventListener("drop", (e) => {
   e.preventDefault();
   resumenDropzone.classList.remove("dragover");
   if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
 });
 
-document.getElementById("btnRemoveResumenGroup").addEventListener("click", ()=>{
+document.getElementById("btnRemoveResumenGroup").addEventListener("click", () => {
   const sel = document.getElementById("resumenGroupSelect");
   if(!sel.value) return;
   const [block, embarque, marca] = sel.value.split("||");
-  resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes]||[]).filter(r=> !(r.block===block && normTxt(r.embarque)===normTxt(embarque) && normTxt(r.marca)===normTxt(marca)));
+  resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
   resumenSave();
   renderResumen();
   showToast("🗑️ Quitado del mes");
 });
 
-document.getElementById("btnClearResumenMonth").addEventListener("click", ()=>{
+document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
   if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
   resumenState.months[resumenState.mes] = [];
   resumenSave();
@@ -1897,9 +1975,9 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", ()=>{
   showToast("🧹 Mes limpiado");
 });
 
-document.getElementById("btnExportResumen").addEventListener("click", ()=>{
+document.getElementById("btnExportResumen").addEventListener("click", () => {
   const tbl = document.getElementById("resumenTable");
-  const wb = XLSX.utils.table_to_book(tbl, {sheet: `RESUMEN_${resumenState.mes}`});
+  const wb = XLSX.utils.table_to_book(tbl, { sheet: `RESUMEN_${resumenState.mes}` });
   XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
   showToast("⬇ Archivo Excel exportado");
 });
