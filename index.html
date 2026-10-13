@@ -199,7 +199,6 @@
   .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .modal-grid .field.full{grid-column:1/-1;}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
-
   /* ---------- HOJA DE RESÚMENES (ESTILO CONSOLIDADO EXCEL) ---------- */
   .resumen-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px;}
   .month-tabs{display:flex;gap:4px;flex-wrap:wrap;}
@@ -514,6 +513,7 @@ let holidaysRef = null;
 let microRef = null;
 let resumenRef = null;
 let connectedRef = null;
+
 function setSyncStatus(mode){
   const dot = document.getElementById("syncDot");
   const label = document.getElementById("syncLabel");
@@ -522,6 +522,7 @@ function setSyncStatus(mode){
   else if(mode==="offline") label.textContent = "Sin conexión (reintentando…)";
   else label.textContent = "Autoguardado local activo";
 }
+
 function initFirebase(){
   try{
     firebase.initializeApp(firebaseConfig);
@@ -532,6 +533,7 @@ function initFirebase(){
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
+
     connectedRef.on("value", (snap)=>{
       setSyncStatus(snap.val() === true ? "online" : "offline");
     });
@@ -548,7 +550,6 @@ function initFirebase(){
     microRef.on("value", (snap)=>{
       const val = snap.val();
       if(val){
-        // Convierte a Array tanto si Firebase devuelve un objeto como si devuelve un array
         microState.items = Array.isArray(val) ? val : Object.values(val);
         renderMicroprocesos();
       }
@@ -566,6 +567,7 @@ function initFirebase(){
     cloudMode = false;
   }
 }
+
 /* =========================================================
    1. ESTADO GLOBAL
 ========================================================= */
@@ -574,6 +576,7 @@ const state = {
   holidays: [],
   editingId: null
 };
+
 function getShipmentsArray(){
   return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
 }
@@ -587,6 +590,7 @@ const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLID
 function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
 function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
 function shipmentBelongsToBrand(sh, marca){ return sh.marca === marca || sh.marca === "ADI_RBK"; }
+
 /* =========================================================
    2. UTILIDADES DE FECHA / MOTOR DE DÍAS HÁBILES
 ========================================================= */
@@ -640,6 +644,7 @@ function dateRange(start, end){
   return days;
 }
 const DOW_LETTERS = ["D","L","M","M","J","V","S"];
+
 /* =========================================================
    3. MOTOR DE CÁLCULO DE ACTIVIDADES & FECHAS MANUALES
 ========================================================= */
@@ -743,6 +748,7 @@ function computeConsolidadoOTN(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
+
 /* =========================================================
    4. RENDER GANTT & DRAG AND DROP
 ========================================================= */
@@ -838,6 +844,7 @@ function renderBrandView(marca, containerId){
   container.innerHTML = list.map(renderShipmentGantt).join("");
   bindGanttDragAndDrop();
 }
+
 /* =========================================================
    SISTEMA DRAG & DROP DE ACTIVIDADES
 ========================================================= */
@@ -895,6 +902,7 @@ function bindGanttDragAndDrop(){
     });
   });
 }
+
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -907,6 +915,7 @@ document.addEventListener("click", (e)=>{
     showToast("↺ Fechas automáticas restablecidas");
   }
 });
+
 /* =========================================================
    5. VISTA CONSOLIDADA (GANTT MENSUAL)
 ========================================================= */
@@ -991,6 +1000,7 @@ function renderConsolidated(){
   });
   gridEl.innerHTML = html;
 }
+
 /* =========================================================
    6. TABLA DE ENTRADAS (CRUD)
 ========================================================= */
@@ -1137,6 +1147,7 @@ document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
   const valid = lines.filter(l=>/^\d{4}-\d{2}-\d{2}$/.test(l));
   saveHolidays(valid);
 });
+
 /* =========================================================
    7. PESTAÑAS
 ========================================================= */
@@ -1155,6 +1166,7 @@ document.querySelectorAll(".tab").forEach(tab=>{
 });
 document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+
 /* =========================================================
    8. MICROPROCESOS (CONEXIÓN EN LA NUBE)
 ========================================================= */
@@ -1166,9 +1178,11 @@ const TASK_TEMPLATES = {
 };
 const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
+
 function microSave(){
-  if(cloudMode){
-    microRef.set(microState.items);
+  if(cloudMode && microRef){
+    const cleanItems = JSON.parse(JSON.stringify(microState.items));
+    microRef.set(cleanItems);
   }
 }
 function trackModeFor(tipo, marca){
@@ -1193,7 +1207,6 @@ function generateTasksForShipment(shipment){
 }
 function ensureTasksForAllShipments(){
   let changed = false;
-  // Solo genera tareas automáticas si ya se cargó la base de microprocesos
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
   Object.keys(state.shipmentsMap).forEach(id=>{
     if(existingShipmentIds.has(id)) return;
@@ -1202,12 +1215,11 @@ function ensureTasksForAllShipments(){
     microState.items.push(...generateTasksForShipment(sh));
     changed = true;
   });
-  if(changed && cloudMode && microRef){
-    microRef.set(microState.items);
+  if(changed){
+    microSave();
   }
 }
-  if(changed) microSave();
-}
+
 function normStatus(v){
   if(v === "COMPLETO" || v === "N/A") return v;
   return "PENDIENTE";
@@ -1313,7 +1325,6 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   microSave();
   showToast("✅ Actividad actualizada en la nube");
 });
-
 document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-obs")) return;
@@ -1324,13 +1335,6 @@ document.getElementById("microTbody").addEventListener("blur", (e)=>{
   showToast("✅ Observación guardada");
 }, true);
 
-function microSave(){
-  if(cloudMode && microRef){
-    // Se asegura de limpiar cualquier valor undefined que Firebase rechace
-    const cleanItems = JSON.parse(JSON.stringify(microState.items));
-    microRef.set(cleanItems);
-  }
-}
 document.getElementById("microTbody").addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-maction]");
   if(!btn) return;
@@ -1398,12 +1402,10 @@ const CHANNEL_COLUMNS = [
 ];
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
 const GRUPOS = ["Calzado","Ropa","Accesorios"];
-
 function normTxt(s){
   if(s === null || s === undefined) return "";
   return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 }
-
 const CHANNEL_ALIAS_MAP = (function(){
   const raw = {
     "MARATHON": ["MARATHON", "MARATHON SPORTS", "MARATHONSPORTS"],
@@ -1435,7 +1437,6 @@ const CHANNEL_ALIAS_MAP = (function(){
 function resolveChannel(raw, allowedList){
   const key = normTxt(raw);
   if(!key) return null;
-  // Búsqueda prioritaria directa o por contención para DEPCO
   if(key.includes("DEPCO")) {
     if(!allowedList || allowedList.includes("DEPCO")) return "DEPCO";
   }
@@ -1452,7 +1453,6 @@ function resolveChannel(raw, allowedList){
   if(allowedList && !allowedList.includes(canon)) return null;
   return canon;
 }
-
 function resolveGrupo(raw){
   const key = normTxt(raw);
   if(key === "C" || key.startsWith("CALZ")) return "Calzado";
@@ -1460,20 +1460,17 @@ function resolveGrupo(raw){
   if(key === "A" || key.startsWith("ACC")) return "Accesorios";
   return null;
 }
-
 function resolveMarca(raw){
   const key = normTxt(raw);
   if(key === "2" || key === "002" || key.includes("ADIDAS")) return "ADIDAS";
   if(key === "1" || key === "004" || key.includes("REEBOK")) return "REEBOK";
   return key || "ADIDAS";
 }
-
 function blankChannels(){
   const o = {};
   CHANNEL_COLUMNS.forEach(c => o[c] = 0);
   return o;
 }
-
 const resumenState = { mes: "JULIO", months: {} };
 RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
 
@@ -1483,7 +1480,6 @@ function resumenSave(){
   }
 }
 
-// Búsqueda inteligente del embarque en la Tabla de Entradas
 function findShipmentInfo(nombreEmbarque){
   const target = normTxt(nombreEmbarque);
   if(!target) return null;
@@ -1493,11 +1489,9 @@ function findShipmentInfo(nombreEmbarque){
     return sName === target || target.includes(sName) || sName.includes(target);
   });
 }
-
 function rowKey(block, embarque, marca, grupo){
   return block + "||" + normTxt(embarque) + "||" + normTxt(marca) + "||" + grupo;
 }
-
 function ensureRow(mes, block, embarque, marca, grupo, meta){
   if(!Array.isArray(resumenState.months[mes])) resumenState.months[mes] = [];
   const list = resumenState.months[mes];
@@ -1522,11 +1516,9 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
   }
   return row;
 }
-
 function ensureTriadRows(mes, block, embarque, marca, meta){
   GRUPOS.forEach(g => ensureRow(mes, block, embarque, marca, g, meta));
 }
-
 function findHeaderRow(aoa, requiredAliases){
   const maxScan = Math.min(aoa.length, 30);
   for(let r = 0; r < maxScan; r++){
@@ -1545,7 +1537,6 @@ function findHeaderRow(aoa, requiredAliases){
   }
   return null;
 }
-
 function getColIdx(colMap, aliases){
   for(const alias of aliases){
     for(const key in colMap){
@@ -1554,18 +1545,15 @@ function getColIdx(colMap, aliases){
   }
   return undefined;
 }
-
 function cellStr(row, idx){
   return (idx === undefined || idx === null || row[idx] === undefined || row[idx] === null) ? "" : String(row[idx]).trim();
 }
-
 function cellNum(row, idx){
   if(idx === undefined || idx === null || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
   return isNaN(n) ? 0 : n;
 }
 
-// 1. OC Consolidada
 function tryParseFormatA(aoa, mes, log){
   const header = findHeaderRow(aoa, [["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"], ["CANTIDAD", "QTY", "UNIDADES"]]);
   if(!header) return false;
@@ -1575,7 +1563,6 @@ function tryParseFormatA(aoa, mes, log){
   const grpCol = getColIdx(colMap, ["GRUPO"]);
   const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
   const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
-
   let count = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
@@ -1586,7 +1573,6 @@ function tryParseFormatA(aoa, mes, log){
     const canal = resolveChannel(cellStr(row, cnlCol), null);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad === 0) continue;
-
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal){
@@ -1598,7 +1584,6 @@ function tryParseFormatA(aoa, mes, log){
   return true;
 }
 
-// 2. OC LPN Consolidado
 function tryParseFormatB(aoa, mes, log){
   const header = findHeaderRow(aoa, [["INSTRUCCION"], ["EMBARQUE"], ["MARCA"], ["GRUPO"], ["CANAL", "DESTINO"]]);
   if(!header) return false;
@@ -1609,7 +1594,6 @@ function tryParseFormatB(aoa, mes, log){
   const grpCol = getColIdx(colMap, ["GRUPO"]);
   const cnlCol = getColIdx(colMap, ["CANAL FINAL", "CANAL", "DESTINO"]);
   const qtyCol = getColIdx(colMap, ["LPN DETAIL SIZE VALUE", "CANTIDAD", "QTY", "UNIDADES"]);
-
   let count = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
@@ -1622,7 +1606,6 @@ function tryParseFormatB(aoa, mes, log){
     const canal = resolveChannel(cellStr(row, cnlCol), null);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad === 0) continue;
-
     ensureTriadRows(mes, "INGRESOS EMBARQUE", embarque, marca, {});
     const targetRow = ensureRow(mes, "INGRESOS EMBARQUE", embarque, marca, grupo, {});
     if(canal){
@@ -1634,7 +1617,6 @@ function tryParseFormatB(aoa, mes, log){
   return true;
 }
 
-// 3. Intercompany
 function tryParseFormatC(aoa, mes, log){
   const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"]]);
   if(!header) return false;
@@ -1644,7 +1626,6 @@ function tryParseFormatC(aoa, mes, log){
   const grpCol = getColIdx(colMap, ["GRUPO"]);
   const destCol = getColIdx(colMap, ["CONCEPTO", "BODEGA", "CANAL", "DESTINO"]);
   const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
-
   let count = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
@@ -1655,7 +1636,6 @@ function tryParseFormatC(aoa, mes, log){
     const destino = resolveChannel(cellStr(row, destCol), INTERCOMPANY_CHANNELS);
     const cantidad = cellNum(row, qtyCol);
     if(!marca || !grupo || cantidad === 0) continue;
-
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
     if(destino){
@@ -1716,11 +1696,9 @@ function showResumenLog(log){
   el.style.display = "block";
   el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
-
 function rowCantidadTotal(row){
   return CHANNEL_COLUMNS.reduce((sum, c) => sum + (Number(row.channels[c]) || 0), 0);
 }
-
 function renderResumenThead(){
   const thead = document.getElementById("resumenThead");
   thead.innerHTML = `
@@ -1745,18 +1723,15 @@ function renderResumen(){
   const rawList = resumenState.months[resumenState.mes] || [];
   const emptyEl = document.getElementById("emptyResumen");
   document.querySelectorAll(".month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
-
   if(rawList.length === 0){
     document.getElementById("resumenTbody").innerHTML = "";
     emptyEl.style.display = "block";
     return;
   }
   emptyEl.style.display = "none";
-
   const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES"];
   const structure = {};
   blocks.forEach(b => structure[b] = []);
-
   rawList.forEach(r => {
     const bKey = (r.block === "INTERCOMPANIES" || r.block === "INTERCOMPANY") ? "INTERCOMPANIES" : "INGRESOS EMBARQUE";
     let bList = structure[bKey];
@@ -1777,35 +1752,26 @@ function renderResumen(){
     }
     mGroup.rows[r.grupo] = r;
   });
-
   let html = "";
-
   blocks.forEach((blockName, blockIdx) => {
     const embList = structure[blockName];
     if(embList.length === 0) return;
-
     if(blockIdx > 0){
       html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
     }
-
     const totalBlockRows = embList.reduce((acc, emb) => {
       return acc + emb.marcas.reduce((mAcc) => mAcc + GRUPOS.length, 0);
     }, 0);
-
     let isFirstRowOfBlock = true;
-
     embList.forEach((emb) => {
-      // Cruzar datos dinámicamente con la Tabla de Entradas
       const shInfo = (blockName === "INGRESOS EMBARQUE") ? findShipmentInfo(emb.embarque) : null;
       let displayTipo = "-";
       let displayDepco = "-";
       let displayConsolidado = "-";
       let displayCD = "-";
-
       if(shInfo){
         displayTipo = tipoLabel(shInfo.tipo);
         displayConsolidado = (shInfo.consolidado && shInfo.consolidado.trim()) ? shInfo.consolidado.trim() : "-";
-
         if(shInfo.fechaArriboDepco){
           displayDepco = fmtDMY(parseISO(shInfo.fechaArriboDepco));
         } else if(shInfo.tipo === "DEPCO"){
@@ -1813,7 +1779,6 @@ function renderResumen(){
           const depAct = acts.find(a => a.key === "ingreso_depco");
           if(depAct) displayDepco = `Del ${fmtDMY(depAct.start)} al ${fmtDMY(depAct.end)}`;
         }
-
         if(shInfo.fechaArriboCD){
           displayCD = fmtDMY(parseISO(shInfo.fechaArriboCD));
         } else {
@@ -1822,27 +1787,19 @@ function renderResumen(){
           if(cdAct) displayCD = `Del ${fmtDMY(cdAct.start)} al ${fmtDMY(cdAct.end)}`;
         }
       }
-
       const totalEmbarqueRows = emb.marcas.reduce((acc) => acc + GRUPOS.length, 0);
       let isFirstRowOfEmbarque = true;
-
       emb.marcas.forEach((mObj) => {
         const totalMarcaRows = GRUPOS.length;
-
         GRUPOS.forEach((grupoName, gIdx) => {
           const row = mObj.rows[grupoName] || ensureRow(resumenState.mes, blockName, emb.embarque, mObj.marca, grupoName, {});
           const totalRowQty = rowCantidadTotal(row);
-
           html += `<tr>`;
-
-          // Columna A (Bloque) y Columna B (Mes)
           if(isFirstRowOfBlock){
             html += `<td rowspan="${totalBlockRows}" class="block-side-cell">${blockName === "INTERCOMPANIES" ? "INTERCOMPANIES" : ""}</td>`;
             html += `<td rowspan="${totalBlockRows}" style="text-align:center;font-weight:700;">${escapeHtml(resumenState.mes)}</td>`;
             isFirstRowOfBlock = false;
           }
-
-          // Columnas Embarque y Tipo de Importación
           if(isFirstRowOfEmbarque){
             html += `<td rowspan="${totalEmbarqueRows}" class="embarque-main-cell">${escapeHtml(emb.embarque)}</td>`;
             if(blockName === "INTERCOMPANIES"){
@@ -1851,49 +1808,33 @@ function renderResumen(){
               html += `<td rowspan="${totalEmbarqueRows}" style="text-align:center;">${escapeHtml(displayTipo)}</td>`;
             }
           }
-
-          // Columnas DEPCO, Consolidado y CD
           if(blockName !== "INTERCOMPANIES" && gIdx === 0){
             html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayDepco)}</td>`;
             html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayConsolidado)}</td>`;
             html += `<td rowspan="${totalMarcaRows}" style="text-align:center;">${escapeHtml(displayCD)}</td>`;
           }
-
-          // Columna Marca
           if(gIdx === 0){
             html += `<td rowspan="${totalMarcaRows}" class="marca-cell">${escapeHtml(mObj.marca)}</td>`;
           }
-
-          // Columna Grupo
           html += `<td class="grupo-cell">${escapeHtml(grupoName)}</td>`;
-
-          // Columna Cantidad Total
           html += `<td class="total-cell">${totalRowQty ? totalRowQty.toLocaleString() : ""}</td>`;
-
-          // Columnas de Canales
           CHANNEL_COLUMNS.forEach(c => {
             const val = row.channels[c] || 0;
             html += `<td class="channel-val">${val === 0 ? "" : Number(val).toLocaleString()}</td>`;
           });
-
-          // Observaciones
           if(gIdx === 0){
             html += `<td rowspan="${totalMarcaRows}" style="font-size:11px;color:var(--muted);text-align:center;">${escapeHtml(row.observaciones || "")}</td>`;
           }
-
           html += `</tr>`;
           isFirstRowOfEmbarque = false;
         });
       });
     });
   });
-
   html += `<tr class="empty-sep-row"><td colspan="${10 + CHANNEL_COLUMNS.length + 1}"></td></tr>`;
-
-  // ========== TOTALES GENERALES ==========
+  
   const totalsByGrupo = { "Calzado": blankChannels(), "Ropa": blankChannels(), "Accesorios": blankChannels() };
   const grandTotals = blankChannels();
-
   rawList.forEach(r => {
     const g = r.grupo;
     if(totalsByGrupo[g]){
@@ -1905,11 +1846,9 @@ function renderResumen(){
     }
   });
 
-  // Total por Grupo
   GRUPOS.forEach((gName, idx) => {
     const gChannels = totalsByGrupo[gName];
     const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
-
     html += `<tr class="totals-group-row">`;
     if(idx === 0){
       html += `<td colspan="7" rowspan="3" style="border:none;"></td>`;
@@ -1927,7 +1866,6 @@ function renderResumen(){
     html += `</tr>`;
   });
 
-  // Cantidad Total General
   const grandTotalAll = CHANNEL_COLUMNS.reduce((sum, c) => sum + (grandTotals[c] || 0), 0);
   html += `<tr class="grand-total-row">
     <td colspan="7" style="border:none;background:transparent;"></td>
@@ -1936,7 +1874,6 @@ function renderResumen(){
     ${CHANNEL_COLUMNS.map(c => `<td class="grand-channel">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
     <td style="border:none;background:transparent;"></td>
   </tr>`;
-
   document.getElementById("resumenTbody").innerHTML = html;
   populateResumenGroupSelect(rawList);
 }
@@ -1960,7 +1897,6 @@ document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
   resumenState.mes = btn.dataset.mes;
   renderResumen();
 });
-
 const resumenDropzone = document.getElementById("resumenDropzone");
 const resumenFileInput = document.getElementById("resumenFileInput");
 resumenDropzone.addEventListener("click", () => resumenFileInput.click());
@@ -1972,7 +1908,6 @@ resumenDropzone.addEventListener("drop", (e) => {
   resumenDropzone.classList.remove("dragover");
   if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
 });
-
 document.getElementById("btnRemoveResumenGroup").addEventListener("click", () => {
   const sel = document.getElementById("resumenGroupSelect");
   if(!sel.value) return;
@@ -1982,7 +1917,6 @@ document.getElementById("btnRemoveResumenGroup").addEventListener("click", () =>
   renderResumen();
   showToast("🗑️ Quitado del mes");
 });
-
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
   if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
   resumenState.months[resumenState.mes] = [];
@@ -1990,7 +1924,6 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
   renderResumen();
   showToast("🧹 Mes limpiado");
 });
-
 document.getElementById("btnExportResumen").addEventListener("click", () => {
   const tbl = document.getElementById("resumenTable");
   const wb = XLSX.utils.table_to_book(tbl, { sheet: `RESUMEN_${resumenState.mes}` });
