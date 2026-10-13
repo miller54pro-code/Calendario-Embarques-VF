@@ -545,10 +545,11 @@ function initFirebase(){
       document.getElementById("holidaysBox").value = state.holidays.join("\n");
       renderAll();
     });
-    microRef.on("value",(snap)=>{
+    microRef.on("value", (snap)=>{
       const val = snap.val();
-      if(val && Array.isArray(val)){
-        microState.items = val;
+      if(val){
+        // Convierte a Array tanto si Firebase devuelve un objeto como si devuelve un array
+        microState.items = Array.isArray(val) ? val : Object.values(val);
         renderMicroprocesos();
       }
     });
@@ -1192,6 +1193,7 @@ function generateTasksForShipment(shipment){
 }
 function ensureTasksForAllShipments(){
   let changed = false;
+  // Solo genera tareas automáticas si ya se cargó la base de microprocesos
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
   Object.keys(state.shipmentsMap).forEach(id=>{
     if(existingShipmentIds.has(id)) return;
@@ -1200,6 +1202,10 @@ function ensureTasksForAllShipments(){
     microState.items.push(...generateTasksForShipment(sh));
     changed = true;
   });
+  if(changed && cloudMode && microRef){
+    microRef.set(microState.items);
+  }
+}
   if(changed) microSave();
 }
 function normStatus(v){
@@ -1298,23 +1304,33 @@ function renderMicroprocesos(){
 document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
-document.getElementById("microTbody").addEventListener("change",(e)=>{
+document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
   const item = microState.items.find(it=>it.id===el.dataset.id);
   if(!item) return;
-  item[el.dataset.field] = el.value || null;
+  item[el.dataset.field] = el.value || "";
   microSave();
-  if(el.classList.contains("inline-status")) renderMicroprocesos(); else showToast("✅ Guardado");
+  showToast("✅ Actividad actualizada en la nube");
 });
-document.getElementById("microTbody").addEventListener("blur",(e)=>{
+
+document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-obs")) return;
   const item = microState.items.find(it=>it.id===el.dataset.id);
   if(!item) return;
-  item[el.dataset.field] = el.value.trim() || null;
+  item[el.dataset.field] = el.value.trim() || "";
   microSave();
+  showToast("✅ Observación guardada");
 }, true);
+
+function microSave(){
+  if(cloudMode && microRef){
+    // Se asegura de limpiar cualquier valor undefined que Firebase rechace
+    const cleanItems = JSON.parse(JSON.stringify(microState.items));
+    microRef.set(cleanItems);
+  }
+}
 document.getElementById("microTbody").addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-maction]");
   if(!btn) return;
