@@ -1,4 +1,4 @@
-[cite: 1]<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -521,6 +521,7 @@
 <script>
 (function(){
 "use strict";
+
 /* =========================================================
    0. CONFIGURACIÓN DE FIREBASE (CREDENCIALES MEDEPORT)
 ========================================================= */
@@ -576,7 +577,10 @@ function initFirebase(){
       if(hBox) hBox.value = state.holidays.join("\n");
       renderAll();
     });
+    
+    // LISTENER MICROPROCESOS PROTEGIDO CONTRA SOBREESCRITURAS
     microRef.on("value", (snap)=>{
+      if (isSavingMicro) return; // Si el usuario está guardando ahora, ignorar lectura de firebase
       const val = snap.val();
       if(val){
         microState.items = Array.isArray(val) ? val : Object.values(val);
@@ -587,6 +591,7 @@ function initFirebase(){
       renderMicroprocesos();
       checkAllAlerts();
     });
+
     resumenRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
@@ -784,7 +789,6 @@ function computeConsolidadoOTN(sh, d0){
 /* =========================================================
    4. SISTEMA DE ALERTAS DÍA A DÍA (GANTT ↔ MICROPROCESOS)
 ========================================================= */
-// Mapea actividades del Gantt con sus tareas equivalentes en Microprocesos
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
@@ -813,11 +817,8 @@ function getAlertsForShipment(sh){
     const endDate = new Date(a.end.getTime());
     endDate.setHours(0,0,0,0);
 
-    // Si la actividad ya debe haberse realizado (venció o vence hoy)
     if(endDate <= now){
       const possibleTaskNames = GANTT_TO_MICRO_MAPPING[a.key] || [a.label];
-      
-      // Buscar la(s) tarea(s) correspondiente(s)
       const relatedTasks = shMicroItems.filter(t => 
         possibleTaskNames.some(name => t.act && t.act.toLowerCase().includes(name.toLowerCase()))
       );
@@ -850,19 +851,16 @@ function getAlertsForShipment(sh){
       });
     }
   });
-
   return alerts;
 }
 
 function checkAllAlerts(){
   const shipments = getShipmentsArray();
   let allAlerts = [];
-  
   shipments.forEach(sh=>{
     const shAlerts = getAlertsForShipment(sh);
     allAlerts = allAlerts.concat(shAlerts);
   });
-
   renderAlertsUI(allAlerts);
   return allAlerts;
 }
@@ -1331,7 +1329,7 @@ document.getElementById("monthPicker").addEventListener("change", renderConsolid
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
 
 /* =========================================================
-   8. MICROPROCESOS (SISTEMA DE GUARDADO CORREGIDO Y EN TIEMPO REAL)
+   9. MICROPROCESOS (CORREGIDO PARA GUARDADO EN LA NUBE)
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
@@ -1344,7 +1342,7 @@ const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
 let isSavingMicro = false;
 
-// Sanitiza el objeto eliminando valores "undefined" para evitar rechazos en Firebase
+// Evitar cadenas vacías "" en Firebase, reemplazándolas con null
 function cleanTaskItem(item) {
   const clean = { ...item };
   Object.keys(clean).forEach(key => {
@@ -1369,7 +1367,7 @@ function microSave() {
   }
 }
 
-// Guardado puntual por ítem para reflejo instantáneo en Firebase
+// Guardado puntual de celda/actividad
 function updateSingleTaskInCloud(itemId) {
   const idx = microState.items.findIndex(it => it.id === itemId);
   if (idx !== -1 && cloudMode && microRef) {
@@ -1377,46 +1375,248 @@ function updateSingleTaskInCloud(itemId) {
     const cleaned = cleanTaskItem(microState.items[idx]);
     microRef.child(idx).set(cleaned, (err) => {
       isSavingMicro = false;
-      if (err) {
-        microSave(); // Fallback a guardado global
-      }
+      if (err) microSave(); 
     });
   }
 }
 
-function initMicroFirebaseListener() {
-  if (microRef) {
-    microRef.on("value", (snap) => {
-      if (isSavingMicro) return; // Evita sobreescribir mientras el usuario edita
-      const val = snap.val();
-      if (val) {
-        microState.items = Array.isArray(val) ? val : Object.values(val);
-      } else {
-        microState.items = [];
-      }
-      ensureTasksForAllShipments();
-      renderMicroprocesos();
-      checkAllAlerts();
-    });
+function trackModeFor(tipo, marca){
+  if(tipo !== "CONSUMO") return "SINGLE";
+  if(marca === "ADI_RBK") return "DUAL";
+  if(marca === "REEBOK") return "REEBOK_ONLY";
+  return "ADIDAS_ONLY";
+}
+
+function blankTaskFields(trackMode){
+  if(trackMode === "DUAL") return {adidas_status:"", adidas_fecha:"", adidas_obs:"", reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  if(trackMode === "ADIDAS_ONLY") return {adidas_status:"", adidas_fecha:"", adidas_obs:""};
+  if(trackMode === "REEBOK_ONLY") return {reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  return {status:"", fecha:"", obs:""};
+}
+
+function generateTasksForShipment(shipment){
+  const template = TASK_TEMPLATES[shipment.tipo] || [];
+  const trackMode = trackModeFor(shipment.tipo, shipment.marca);
+  return template.map(t=>({
+    id: generateId(), shipmentId: shipment.id, proc: shipment.tipo, trackMode,
+    ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
+  }));
+}
+
+function ensureTasksForAllShipments(){
+  let changed = false;
+  const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
+  Object.keys(state.shipmentsMap).forEach(id=>{
+    if(existingShipmentIds.has(id)) return;
+    const sh = {...state.shipmentsMap[id], id};
+    if(!sh.tipo || !TASK_TEMPLATES[sh.tipo]) return;
+    microState.items.push(...generateTasksForShipment(sh));
+    changed = true;
+  });
+  if(changed){
+    microSave();
   }
 }
 
-// Evento global para capturar cambios inmediatos en comboboxes y campos de fecha
-document.getElementById("microTbody").addEventListener("change", (e) => {
-  const el = e.target;
-  if (!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
+function normStatus(v){
+  if(v === "COMPLETO" || v === "N/A") return v;
+  return "PENDIENTE";
+}
+
+function isItemComplete(item){
+  if(item.trackMode === "DUAL") return (item.adidas_status==="COMPLETO" || item.adidas_status==="N/A") && (item.reebok_status==="COMPLETO" || item.reebok_status==="N/A");
+  if(item.trackMode === "ADIDAS_ONLY") return item.adidas_status==="COMPLETO" || item.adidas_status==="N/A";
+  if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO" || item.reebok_status==="N/A";
+  return item.status === "COMPLETO" || item.status === "N/A";
+}
+
+function renderMicroShipmentOptions(){
+  const sel = document.getElementById("microShipmentSelect");
+  if(!sel) return;
+  const prev = microState.selectedKey;
+  const list = getShipmentsArray().filter(s=> TASK_TEMPLATES[s.tipo]).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  let html = `<option value="${INTERCOMPANY_KEY}">🔗 Intercompany (general)</option>`;
+  html += list.map(s=> `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}</option>`).join("");
+  sel.innerHTML = html;
+  sel.value = (prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) ? prev : INTERCOMPANY_KEY;
+  microState.selectedKey = sel.value;
+}
+
+function currentSelectionItems(){
+  if(microState.selectedKey === INTERCOMPANY_KEY){
+    return microState.items.filter(it=> it.proc==="INTERCOMPANY" && !it.shipmentId);
+  }
+  return microState.items.filter(it=> it.shipmentId === microState.selectedKey);
+}
+
+function renderMicroThead(trackMode){
+  const thead = document.getElementById("microThead");
+  if(!thead) return;
+  if(trackMode === "DUAL"){
+    thead.innerHTML = `<tr><th rowspan="2">Orden</th><th rowspan="2">Actividad</th><th colspan="3" class="brand-col-head ADIDAS">ADIDAS</th><th colspan="3" class="brand-col-head REEBOK">REEBOK</th><th rowspan="2">Acciones</th></tr><tr><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th></tr>`;
+  } else if(trackMode === "ADIDAS_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th>Acciones</th></tr>`;
+  } else if(trackMode === "REEBOK_ONLY"){
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th><th>Acciones</th></tr>`;
+  } else {
+    thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th>Status</th><th>Fecha</th><th>Obs</th><th>Acciones</th></tr>`;
+  }
+}
+
+function statusSelectHtml(id, field, value){
+  const v = value || "";
+  return `<select class="inline-status" data-id="${id}" data-field="${field}"><option value="" ${v===""?"selected":""}>PENDIENTE</option><option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option><option value="N/A" ${v==="N/A"?"selected":""}>N/A</option></select>`;
+}
+
+function dateInputHtml(id, field, value){
+  const v = /^\d{4}-\d{2}-\d{2}$/.test(value||"") ? value : "";
+  return `<input type="date" class="inline-fecha" data-id="${id}" data-field="${field}" value="${v}">`;
+}
+
+function obsInputHtml(id, field, value){
+  return `<input type="text" class="inline-obs" data-id="${id}" data-field="${field}" value="${escapeHtml(value||"")}">`;
+}
+
+function renderMicroprocesos(){
+  const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
+  const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
+  let items = currentSelectionItems();
+  const trackMode = items.length>0 ? items[0].trackMode : (sh ? trackModeFor(sh.tipo, sh.marca) : "SINGLE");
+  renderMicroThead(trackMode);
+  const term = microState.search.trim().toLowerCase();
+  const filtered = items.filter(it=>{
+    if(microState.statusFilter !== "TODOS"){
+      const statuses = trackMode==="DUAL" ? [it.adidas_status, it.reebok_status] : trackMode==="ADIDAS_ONLY" ? [it.adidas_status] : trackMode==="REEBOK_ONLY" ? [it.reebok_status] : [it.status];
+      if(!statuses.some(s=> normStatus(s)===microState.statusFilter)) return false;
+    }
+    if(term){
+      const haystack = [it.act, it.obs, it.adidas_obs, it.reebok_obs].filter(Boolean).join(" ").toLowerCase();
+      if(haystack.indexOf(term) === -1) return false;
+    }
+    return true;
+  }).sort((a,b)=> (Number(a.ord)||0) - (Number(b.ord)||0));
   
+  const tbody = document.getElementById("microTbody");
+  const emptyEl = document.getElementById("emptyMicro");
+  if(!tbody) return;
+  
+  document.getElementById("microCount").textContent = filtered.length;
+  document.getElementById("microDoneCount").textContent = filtered.filter(isItemComplete).length;
+  
+  if(filtered.length===0){
+    tbody.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = "none";
+  tbody.innerHTML = filtered.map(it=>{
+    const orderCell = `<td><b>${escapeHtml(String(it.ord!=null?it.ord:""))}</b></td><td class="wrap">${escapeHtml(it.act||"")}</td>`;
+    const actionsCell = `<td style="white-space:nowrap;"><button class="btn small" data-maction="edit" data-id="${it.id}">✏️</button><button class="btn small danger" data-maction="delete" data-id="${it.id}">🗑️</button></td>`;
+    if(trackMode === "DUAL"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td><td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+    }
+    if(trackMode === "ADIDAS_ONLY"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>${actionsCell}</tr>`;
+    }
+    if(trackMode === "REEBOK_ONLY"){
+      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+    }
+    return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
+  }).join("");
+}
+
+document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
+document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
+document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
+
+// Evento que capta cambios en Estado ("COMPLETO") y en Fecha
+document.getElementById("microTbody").addEventListener("change", (e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
   const itemId = el.dataset.id;
   const field = el.dataset.field;
-  const item = microState.items.find(it => it.id === itemId);
-  
-  if (item) {
+  const item = microState.items.find(it=>it.id===itemId);
+  if(item){
     item[field] = el.value || null;
     updateSingleTaskInCloud(itemId);
     checkAllAlerts();
     showToast("✅ Cambio guardado al instante en la nube");
   }
 });
+
+// Evento que capta lo que se escriba en Observaciones al perder el foco
+document.getElementById("microTbody").addEventListener("blur", (e)=>{
+  const el = e.target;
+  if(!el.classList.contains("inline-obs")) return;
+  const itemId = el.dataset.id;
+  const field = el.dataset.field;
+  const item = microState.items.find(it=>it.id===itemId);
+  if(item){
+    item[field] = el.value.trim() || null;
+    updateSingleTaskInCloud(itemId);
+    showToast("✅ Observación guardada en la nube");
+  }
+}, true);
+
+document.getElementById("microTbody").addEventListener("click",(e)=>{
+  const btn = e.target.closest("button[data-maction]");
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.maction==="delete"){
+    if(confirm("¿Eliminar esta actividad?")){
+      microState.items = microState.items.filter(it=>it.id!==id);
+      microSave();
+      renderMicroprocesos();
+      checkAllAlerts();
+      showToast("🗑️ Actividad eliminada");
+    }
+  } else if(btn.dataset.maction==="edit"){
+    const item = microState.items.find(it=>it.id===id);
+    if(item) openMicroModal(item);
+  }
+});
+
+function openMicroModal(item){
+  microState.editingId = item ? item.id : null;
+  document.getElementById("microModalTitle").textContent = item ? "✏️ Editar Actividad" : "+ Agregar Actividad";
+  document.getElementById("m_ord").value = item && item.ord!=null ? item.ord : "";
+  document.getElementById("m_act").value = item ? (item.act||"") : "";
+  const trackMode = item ? item.trackMode : "SINGLE";
+  document.getElementById("m_singleTrackWrap").style.display = trackMode==="SINGLE" ? "block" : "none";
+  document.getElementById("m_adidasWrap").style.display = (trackMode==="DUAL"||trackMode==="ADIDAS_ONLY") ? "block" : "none";
+  document.getElementById("m_reebokWrap").style.display = (trackMode==="DUAL"||trackMode==="REEBOK_ONLY") ? "block" : "none";
+  document.getElementById("microModal").classList.add("open");
+}
+function closeMicroModal(){ document.getElementById("microModal").classList.remove("open"); microState.editingId = null; }
+document.getElementById("btnAddMicro").addEventListener("click", ()=> openMicroModal(null));
+document.getElementById("btnMicroCancel").addEventListener("click", closeMicroModal);
+document.getElementById("btnMicroSave").addEventListener("click", ()=>{
+  const act = document.getElementById("m_act").value.trim();
+  if(!act){ alert("Ingresa la actividad."); return; }
+  const ordRaw = document.getElementById("m_ord").value;
+  const data = {
+    proc: microState.selectedKey===INTERCOMPANY_KEY ? "INTERCOMPANY" : (state.shipmentsMap[microState.selectedKey]||{}).tipo,
+    shipmentId: microState.selectedKey===INTERCOMPANY_KEY ? null : microState.selectedKey,
+    trackMode: "SINGLE",
+    ord: ordRaw === "" ? null : Number(ordRaw),
+    act,
+    status: document.getElementById("m_status").value || null,
+    fecha: document.getElementById("m_fecha").value || null,
+    obs: document.getElementById("m_obs").value.trim() || null
+  };
+  if(microState.editingId){
+    const idx = microState.items.findIndex(it=>it.id===microState.editingId);
+    if(idx>-1) microState.items[idx] = {id: microState.editingId, ...data};
+  } else {
+    microState.items.push({id: generateId(), ...data});
+  }
+  microSave();
+  closeMicroModal();
+  renderMicroprocesos();
+  checkAllAlerts();
+  showToast("✅ Actividad guardada");
+});
+
 /* =========================================================
    10. HOJA DE RESÚMENES (VISTA CONSOLIDADA COMPATIBLE CON EXCEL)
 ========================================================= */
