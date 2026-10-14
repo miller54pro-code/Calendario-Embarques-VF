@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+[cite: 1]<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Medeport | Planificación &amp; Cronograma de Embarques</title>
+<title>Medeport | Planificación & Cronograma de Embarques</title>
 <!-- Firebase SDK (compat, vía CDN) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -22,6 +22,9 @@
     --accent-2:#5B9BD5;
     --ok:#385623;
     --danger:#C00000;
+    --warning:#b78103;
+    --warning-bg:#fff9e6;
+    --warning-border:#ffe58f;
     --radius:10px;
     --shadow:0 1px 2px rgba(20,25,45,.06), 0 6px 20px rgba(20,25,45,.05);
     font-family:"Segoe UI","Inter",system-ui,-apple-system,Arial,sans-serif;
@@ -107,6 +110,19 @@
   .badge-tipo-CONSUMO{background:#dff0ff;color:#0b5aa8;}
   .badge-tipo-DEPCO{background:#e4e7ef;color:#3a4360;}
   .badge-tipo-CONSOLIDADO_OTN{background:#fde9d9;color:#8a4a12;}
+
+  /* ALERTAS BANNER */
+  .alerts-container{margin-bottom:16px;}
+  .alert-banner{
+    background:var(--warning-bg);border:1px solid var(--warning-border);color:#8a5a00;
+    border-radius:8px;padding:12px 16px;font-size:13px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;
+  }
+  .alert-banner.danger{background:#fff0f0;border-color:#ffccc7;color:var(--danger);}
+  .alert-banner .alert-icon{font-size:18px;line-height:1;}
+  .alert-banner .alert-content{flex:1;}
+  .alert-banner ul{margin:4px 0 0 18px;padding:0;font-size:12px;}
+  .alert-banner li{margin-bottom:3px;}
+
   /* ---------- SHIPMENT / GANTT BLOCK ---------- */
   .shipment-block{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:22px;overflow:hidden;background:#fff;}
   .shipment-header{
@@ -149,6 +165,19 @@
   .act-bar.bordered{box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 0 0 3px #00000055; outline:2px dashed #7a5b00; outline-offset:1px;}
   .act-bar.is-custom::after{content:" •";font-size:14px;color:rgba(255,255,255,0.9);margin-left:3px;}
   .act-bar.dark-text.is-custom::after{color:#242424;}
+  
+  /* ESTILOS DE ALERTA EN BARRAS */
+  .act-bar.has-alert{
+    animation: alertPulse 2s infinite;
+    outline: 2px solid var(--danger) !important;
+    outline-offset: 1px;
+  }
+  @keyframes alertPulse {
+    0% { box-shadow: 0 0 0 0 rgba(192, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(192, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(192, 0, 0, 0); }
+  }
+
   .row-label-col{
     position:sticky;left:0;background:#fff;padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);
     border-right:2px solid var(--line);display:flex;align-items:center;
@@ -158,10 +187,6 @@
   .legend-table .sw{width:16px;height:16px;border-radius:4px;display:inline-block;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);}
   /* ---------- CONSOLIDATED ---------- */
   .month-picker{display:flex;align-items:center;gap:8px;}
-  .overlap-alert{
-    background:#fff4e5;border:1px solid #f0c98a;color:#8a5a00;border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:14px;
-  }
-  .overlap-alert.none{background:#e9f7ec;border-color:#a9d18e;color:#2f5b1f;}
   footer.hint{max-width:1600px;margin:0 auto;padding:0 24px 30px 24px;color:var(--muted);font-size:11.5px;}
   @media (max-width:900px){
     .form-grid{grid-template-columns:repeat(2,1fr);}
@@ -335,6 +360,7 @@
     <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
   </div>
   <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <div id="adidasAlerts" class="alerts-container"></div>
   <div id="adidasContainer"></div>
 </div>
 <!-- ============ VIEW: REEBOK ============ -->
@@ -343,6 +369,7 @@
     <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
   </div>
   <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <div id="reebokAlerts" class="alerts-container"></div>
   <div id="reebokContainer"></div>
 </div>
 <!-- ============ VIEW: CONSOLIDADO ============ -->
@@ -355,7 +382,7 @@
         <select id="monthPicker"></select>
       </div>
     </div>
-    <div id="overlapAlerts"></div>
+    <div id="consolidadoAlerts" class="alerts-container"></div>
     <div id="consolidadoGrid" class="gantt-scroll"></div>
     <div class="empty" id="emptyConsolidado" style="display:none;">No hay embarques con fechas en el mes seleccionado.</div>
   </div>
@@ -372,6 +399,7 @@
     <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
       Cada embarque de la <b>Tabla de Entradas</b> genera su propio checklist sincronizado en la nube para todo el equipo.
     </p>
+    <div id="microAlerts" class="alerts-container"></div>
     <div class="micro-filters">
       <div class="field" style="min-width:280px;">
         <label>Embarque</label>
@@ -517,6 +545,7 @@ let connectedRef = null;
 function setSyncStatus(mode){
   const dot = document.getElementById("syncDot");
   const label = document.getElementById("syncLabel");
+  if(!dot || !label) return;
   dot.className = "sync-dot " + mode;
   if(mode==="online") label.textContent = "Sincronizado con la nube";
   else if(mode==="offline") label.textContent = "Sin conexión (reintentando…)";
@@ -533,7 +562,6 @@ function initFirebase(){
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
-
     connectedRef.on("value", (snap)=>{
       setSyncStatus(snap.val() === true ? "online" : "offline");
     });
@@ -544,15 +572,20 @@ function initFirebase(){
     holidaysRef.on("value",(snap)=>{
       const val = snap.val();
       state.holidays = Array.isArray(val) ? val : (val ? Object.values(val) : []);
-      document.getElementById("holidaysBox").value = state.holidays.join("\n");
+      const hBox = document.getElementById("holidaysBox");
+      if(hBox) hBox.value = state.holidays.join("\n");
       renderAll();
     });
     microRef.on("value", (snap)=>{
       const val = snap.val();
       if(val){
         microState.items = Array.isArray(val) ? val : Object.values(val);
-        renderMicroprocesos();
+      } else {
+        microState.items = [];
       }
+      ensureTasksForAllShipments();
+      renderMicroprocesos();
+      checkAllAlerts();
     });
     resumenRef.on("value",(snap)=>{
       const val = snap.val();
@@ -576,7 +609,6 @@ const state = {
   holidays: [],
   editingId: null
 };
-
 function getShipmentsArray(){
   return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
 }
@@ -750,7 +782,128 @@ function computeConsolidadoOTN(sh, d0){
 }
 
 /* =========================================================
-   4. RENDER GANTT & DRAG AND DROP
+   4. SISTEMA DE ALERTAS DÍA A DÍA (GANTT ↔ MICROPROCESOS)
+========================================================= */
+// Mapea actividades del Gantt con sus tareas equivalentes en Microprocesos
+const GANTT_TO_MICRO_MAPPING = {
+  "importacion": ["Instrucciones de importación por producto"],
+  "embarque": ["Instrucciones de embarque por comex"],
+  "oc_plan": ["Cruce de PTS completos", "Cruce de PTS completos para creación de OC"],
+  "oc_carton": ["Cruce de PTS completos para creación de OC"],
+  "oc_canal": ["Envío OC a producto", "Envío OC (LPN) a producto"],
+  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "*Carga precio Intercompany", "Trabajar Archivos Intercompany:"],
+  "partidas": ["Carga partidas arancelarias"],
+  "envio_pedido": ["*Envío del pedido a COMEX", "*Envío de pedido a comex"],
+  "distribucion": ["Respuesta de distribución de tiendas"],
+  "ocas": ["Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN", "Elaboración Plantilla OCA"],
+  "ocas_ocis_lpn": ["Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"],
+  "otn": ["Elaboración Plantilla para OTN (consolidado)", "Crear número de OTN"],
+  "lpn": ["LPN", "LPN Consolidado"]
+};
+
+function getAlertsForShipment(sh){
+  const alerts = [];
+  const acts = computeActivities(sh);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+
+  const shMicroItems = microState.items.filter(it=> it.shipmentId === sh.id);
+
+  acts.forEach(a=>{
+    const endDate = new Date(a.end.getTime());
+    endDate.setHours(0,0,0,0);
+
+    // Si la actividad ya debe haberse realizado (venció o vence hoy)
+    if(endDate <= now){
+      const possibleTaskNames = GANTT_TO_MICRO_MAPPING[a.key] || [a.label];
+      
+      // Buscar la(s) tarea(s) correspondiente(s)
+      const relatedTasks = shMicroItems.filter(t => 
+        possibleTaskNames.some(name => t.act && t.act.toLowerCase().includes(name.toLowerCase()))
+      );
+
+      relatedTasks.forEach(task => {
+        let isComplete = false;
+        if(task.trackMode === "DUAL"){
+          if(sh.marca === "ADIDAS") isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+          else if(sh.marca === "REEBOK") isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+          else isComplete = (task.adidas_status === "COMPLETO" || task.adidas_status === "N/A") && (task.reebok_status === "COMPLETO" || task.reebok_status === "N/A");
+        } else if(task.trackMode === "ADIDAS_ONLY"){
+          isComplete = task.adidas_status === "COMPLETO" || task.adidas_status === "N/A";
+        } else if(task.trackMode === "REEBOK_ONLY"){
+          isComplete = task.reebok_status === "COMPLETO" || task.reebok_status === "N/A";
+        } else {
+          isComplete = task.status === "COMPLETO" || task.status === "N/A";
+        }
+
+        if(!isComplete){
+          alerts.push({
+            barKey: a.key,
+            activityLabel: a.label,
+            taskLabel: task.act,
+            dueDate: a.end,
+            shipmentName: sh.nombre,
+            shipmentId: sh.id,
+            marca: sh.marca
+          });
+        }
+      });
+    }
+  });
+
+  return alerts;
+}
+
+function checkAllAlerts(){
+  const shipments = getShipmentsArray();
+  let allAlerts = [];
+  
+  shipments.forEach(sh=>{
+    const shAlerts = getAlertsForShipment(sh);
+    allAlerts = allAlerts.concat(shAlerts);
+  });
+
+  renderAlertsUI(allAlerts);
+  return allAlerts;
+}
+
+function renderAlertsUI(alerts){
+  const adidasAlertsEl = document.getElementById("adidasAlerts");
+  const reebokAlertsEl = document.getElementById("reebokAlerts");
+  const consolidadoAlertsEl = document.getElementById("consolidadoAlerts");
+  const microAlertsEl = document.getElementById("microAlerts");
+
+  const buildBanner = (filtered, title) => {
+    if(filtered.length === 0) return "";
+    const list = filtered.map(a=>`<li><b>${escapeHtml(a.shipmentName)}</b> (${marcaLabel(a.marca)}): La actividad <i>"${escapeHtml(a.activityLabel)}"</i> debió completarse el ${fmtDMY(a.dueDate)}.</li>`).join("");
+    return `
+      <div class="alert-banner danger">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+          <b>${title} (${filtered.length} tareas pendientes con fecha vencida en Gantt):</b>
+          <ul>${list}</ul>
+        </div>
+      </div>`;
+  };
+
+  if(adidasAlertsEl){
+    const adis = alerts.filter(a=> a.marca === "ADIDAS" || a.marca === "ADI_RBK");
+    adidasAlertsEl.innerHTML = buildBanner(adis, "Alertas de Microprocesos Pendientes - ADIDAS");
+  }
+  if(reebokAlertsEl){
+    const rbks = alerts.filter(a=> a.marca === "REEBOK" || a.marca === "ADI_RBK");
+    reebokAlertsEl.innerHTML = buildBanner(rbks, "Alertas de Microprocesos Pendientes - REEBOK");
+  }
+  if(consolidadoAlertsEl){
+    consolidadoAlertsEl.innerHTML = buildBanner(alerts, "Atención: Actividades atrasadas en el cronograma consolidado");
+  }
+  if(microAlertsEl){
+    microAlertsEl.innerHTML = buildBanner(alerts, "Pendientes Críticos según Cronograma Gantt");
+  }
+}
+
+/* =========================================================
+   5. RENDER GANTT & DRAG AND DROP
 ========================================================= */
 function renderShipmentGantt(sh){
   const acts = computeActivities(sh);
@@ -773,6 +926,8 @@ function renderShipmentGantt(sh){
     headerCells += `<div class="${cls.join(' ')}"><span class="dow">${DOW_LETTERS[d.getDay()]}</span><span class="num">${d.getDate()}</span></div>`;
   });
   
+  const shAlerts = getAlertsForShipment(sh);
+
   function rowForBars(barsInRow){
     let cells = "";
     for(let i=0;i<colCount;i++){
@@ -782,13 +937,15 @@ function renderShipmentGantt(sh){
     barsInRow.forEach(a=>{
       const startIdx = Math.round((a.start - minDate)/86400000)+1;
       const endIdx = Math.round((a.end - minDate)/86400000)+2;
-      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''} ${a.isCustom?'is-custom':''}" 
+      const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
+
+      cells += `<div class="act-bar ${a.textDark?'dark-text':''} ${a.bordered?'bordered':''} ${a.isCustom?'is-custom':''} ${hasAlert?'has-alert':''}" 
                      draggable="true" 
                      data-shipment-id="${sh.id}" 
                      data-bar-key="${a.key}" 
                      data-duration="${Math.round((a.end - a.start)/86400000)}" 
                      style="grid-column:${startIdx}/${endIdx}; background:${a.color};" 
-                     title="${a.label} (${a.responsable}) — ${fmtDMY(a.start)}${a.isCustom ? ' [Ajustada manualmente]' : ''}&#10;Arrastra a otro día para moverla">${escapeHtml(a.label)}</div>`;
+                     title="${a.label} (${a.responsable}) — ${fmtDMY(a.start)}${a.isCustom ? ' [Ajustada manualmente]' : ''}${hasAlert ? ' ⚠️ [ALERTA: Tarea incompleta en Microprocesos]' : ''}&#10;Arrastra a otro día para moverla">${hasAlert ? '⚠️ ' : ''}${escapeHtml(a.label)}</div>`;
     });
     return `<div class="gantt-grid" style="grid-template-columns:${templateCols};margin-bottom:4px;">${cells}</div>`;
   }
@@ -798,14 +955,17 @@ function renderShipmentGantt(sh){
   const bottomRow = acts.filter(a=>a.zone==="bottom");
   const headerRow = `<div class="gantt-grid" style="grid-template-columns:${templateCols};">${headerCells}</div>`;
   const sortedActs = [...acts].sort((a,b)=>a.start-b.start);
-  let legendRows = sortedActs.map(a=>`
+  let legendRows = sortedActs.map(a=>{
+    const hasAlert = shAlerts.some(alt=> alt.barKey === a.key);
+    return `
     <tr>
       <td><span class="sw" style="background:${a.color};"></span></td>
-      <td>${escapeHtml(a.label)}${a.isCustom ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;">(Manual)</span>' : ''}</td>
+      <td>${escapeHtml(a.label)}${a.isCustom ? ' <span style="font-size:10px;color:var(--accent);font-weight:700;">(Manual)</span>' : ''}${hasAlert ? ' <span style="font-size:10px;color:var(--danger);font-weight:700;">⚠️ Incompleto</span>' : ''}</td>
       <td>${RESPONSABLE_HORA}</td>
       <td>${a.responsable}</td>
       <td>${fmtDMY(a.start)}${a.start.getTime()!==a.end.getTime()?' — '+fmtDMY(a.end):''}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   const hasCustomDates = sh.customDates && Object.keys(sh.customDates).length > 0;
   return `
   <div class="shipment-block">
@@ -832,7 +992,7 @@ function renderShipmentGantt(sh){
   </div>`;
 }
 function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function renderBrandView(marca, containerId){
   const container = document.getElementById(containerId);
@@ -902,7 +1062,6 @@ function bindGanttDragAndDrop(){
     });
   });
 }
-
 document.addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-action='reset-dates']");
   if(!btn) return;
@@ -917,7 +1076,7 @@ document.addEventListener("click", (e)=>{
 });
 
 /* =========================================================
-   5. VISTA CONSOLIDADA (GANTT MENSUAL)
+   6. VISTA CONSOLIDADA (GANTT MENSUAL)
 ========================================================= */
 function getAvailableMonths(){
   const set = new Set();
@@ -938,6 +1097,7 @@ function getAvailableMonths(){
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 function populateMonthPicker(){
   const picker = document.getElementById("monthPicker");
+  if(!picker) return;
   const months = getAvailableMonths();
   const prevVal = picker.value;
   picker.innerHTML = months.map(m=>{
@@ -949,6 +1109,7 @@ function populateMonthPicker(){
 function renderConsolidated(){
   populateMonthPicker();
   const picker = document.getElementById("monthPicker");
+  if(!picker) return;
   const ym = picker.value || getAvailableMonths()[0];
   const [y,m] = ym.split("-").map(Number);
   const monthStart = new Date(y, m-1, 1);
@@ -965,14 +1126,12 @@ function renderConsolidated(){
   });
   const gridEl = document.getElementById("consolidadoGrid");
   const emptyEl = document.getElementById("emptyConsolidado");
-  const alertsEl = document.getElementById("overlapAlerts");
   if(rows.length===0){
-    gridEl.innerHTML = "";
-    emptyEl.style.display = "block";
-    alertsEl.innerHTML = "";
+    if(gridEl) gridEl.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
     return;
   }
-  emptyEl.style.display = "none";
+  if(emptyEl) emptyEl.style.display = "none";
   let headerCells = `<div class="row-label-col">Embarque</div>`;
   days.forEach(d=>{
     const cls = ["day-head"];
@@ -998,23 +1157,24 @@ function renderConsolidated(){
     });
     html += `<div class="gantt-grid" style="grid-template-columns:180px ${templateCols};margin-bottom:3px;">${cells}</div>`;
   });
-  gridEl.innerHTML = html;
+  if(gridEl) gridEl.innerHTML = html;
 }
 
 /* =========================================================
-   6. TABLA DE ENTRADAS (CRUD)
+   7. TABLA DE ENTRADAS (CRUD)
 ========================================================= */
 function renderInputsTable(){
   const tbody = document.getElementById("shipmentsTbody");
   const emptyEl = document.getElementById("emptyShipments");
+  if(!tbody) return;
   const list = getShipmentsArray();
   document.getElementById("countShipments").textContent = `${list.length} embarque(s)`;
   if(list.length===0){
     tbody.innerHTML = "";
-    emptyEl.style.display = "block";
+    if(emptyEl) emptyEl.style.display = "block";
     return;
   }
-  emptyEl.style.display = "none";
+  if(emptyEl) emptyEl.style.display = "none";
   tbody.innerHTML = list.map(s=>`
     <tr>
       <td><span class="pill badge-marca-${s.marca}">${marcaLabel(s.marca)}</span></td>
@@ -1073,7 +1233,9 @@ function renderAll(){
   renderConsolidated();
   ensureTasksForAllShipments();
   renderMicroShipmentOptions();
+  renderMicroprocesos();
   renderResumen();
+  checkAllAlerts();
 }
 function showToast(msg, kind){
   let t = document.getElementById("toastMsg");
@@ -1149,7 +1311,7 @@ document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
 });
 
 /* =========================================================
-   7. PESTAÑAS
+   8. PESTAÑAS
 ========================================================= */
 document.querySelectorAll(".tab").forEach(tab=>{
   tab.addEventListener("click", ()=>{
@@ -1162,13 +1324,14 @@ document.querySelectorAll(".tab").forEach(tab=>{
     if(tab.dataset.view==="consolidado") renderConsolidated();
     if(tab.dataset.view==="microprocesos") renderMicroprocesos();
     if(tab.dataset.view==="resumen") renderResumen();
+    checkAllAlerts();
   });
 });
 document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
 
 /* =========================================================
-   8. MICROPROCESOS (CONEXIÓN EN LA NUBE)
+   9. MICROPROCESOS (CORREGIDO PARA NUBE)
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
@@ -1176,27 +1339,40 @@ const TASK_TEMPLATES = {
   "CONSOLIDADO_OTN": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar respuesta OC de Silvi:"}, {"ord": 3, "act": "*Envío de pedido a comex"}, {"ord": 4, "act": "*Ingresos TIENDAS con CUADRE OC"}, {"ord": 5, "act": "*Ingresos MAYORISTA"}, {"ord": 6, "act": "*Elaboración archivos Intercomapny"}, {"ord": 7, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 8, "act": "*Carga precio PVP"}, {"ord": 9, "act": "*Carga precio Intercompany"}, {"ord": 10, "act": "*Carga precio Mayor"}, {"ord": 11, "act": "*Carga precio MKT"}, {"ord": 12, "act": "Respuesta de distribución de tiendas"}, {"ord": 13, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 14, "act": "Elaboración Plantilla OTN"}, {"ord": 15, "act": "Elaboración Plantilla DISTRIBUCION"}, {"ord": 16, "act": "Crear número de OTN"}, {"ord": 17, "act": "Revisar que todos los precios FOB de la OTN estén creados"}, {"ord": 18, "act": "Enviar número de OTN a COMEX"}, {"ord": 19, "act": "Respuesta Comex: Confirma diferencia entre monto OTN y facturas"}, {"ord": 20, "act": "Enviar correo a finanzas para aprobación de diferencia(si aplica)"}, {"ord": 21, "act": "Aprobación diferencia por finanzas"}, {"ord": 22, "act": "Crear números de traslados en SAP"}, {"ord": 23, "act": "Enviar números de traslados a CD por correo"}, {"ord": 24, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 25, "act": "Solicitar plantilla Microsite"}, {"ord": 26, "act": "Llena plantilla Microsite"}, {"ord": 27, "act": "Cargar plantilla Microsite por DM"}, {"ord": 28, "act": "LPN"}],
   "INTERCOMPANY": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Trabajar Archivos Intercompany:"}, {"ord": 3, "act": "*Carga precio PVP"}, {"ord": 4, "act": "*Carga precio Intercompany"}, {"ord": 5, "act": "Elaboración Plantilla para OTN (consolidado 1)"}, {"ord": 6, "act": "Solicitar plantilla Microsite"}, {"ord": 7, "act": "Llena plantilla Microsite"}, {"ord": 8, "act": "Cargar plantilla Microsite por DM"}, {"ord": 9, "act": "Catalogar"}]
 };
+
 const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
 
+function sanitizeForFirebase(obj) {
+  return JSON.parse(JSON.stringify(obj, (k, v) => (v === undefined ? null : v)));
+}
+
 function microSave(){
   if(cloudMode && microRef){
-    const cleanItems = JSON.parse(JSON.stringify(microState.items));
-    microRef.set(cleanItems);
+    const cleanItems = sanitizeForFirebase(microState.items);
+    microRef.set(cleanItems, (err)=>{
+      if(err){
+        console.error("Error guardando en la nube:", err);
+        showToast("❌ Error guardando en la nube", "error");
+      }
+    });
   }
 }
+
 function trackModeFor(tipo, marca){
   if(tipo !== "CONSUMO") return "SINGLE";
   if(marca === "ADI_RBK") return "DUAL";
   if(marca === "REEBOK") return "REEBOK_ONLY";
   return "ADIDAS_ONLY";
 }
+
 function blankTaskFields(trackMode){
-  if(trackMode === "DUAL") return {adidas_status:null, adidas_fecha:null, adidas_obs:null, reebok_status:null, reebok_fecha:null, reebok_obs:null};
-  if(trackMode === "ADIDAS_ONLY") return {adidas_status:null, adidas_fecha:null, adidas_obs:null};
-  if(trackMode === "REEBOK_ONLY") return {reebok_status:null, reebok_fecha:null, reebok_obs:null};
-  return {status:null, fecha:null, obs:null};
+  if(trackMode === "DUAL") return {adidas_status:"", adidas_fecha:"", adidas_obs:"", reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  if(trackMode === "ADIDAS_ONLY") return {adidas_status:"", adidas_fecha:"", adidas_obs:""};
+  if(trackMode === "REEBOK_ONLY") return {reebok_status:"", reebok_fecha:"", reebok_obs:""};
+  return {status:"", fecha:"", obs:""};
 }
+
 function generateTasksForShipment(shipment){
   const template = TASK_TEMPLATES[shipment.tipo] || [];
   const trackMode = trackModeFor(shipment.tipo, shipment.marca);
@@ -1205,6 +1381,7 @@ function generateTasksForShipment(shipment){
     ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
   }));
 }
+
 function ensureTasksForAllShipments(){
   let changed = false;
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
@@ -1224,12 +1401,14 @@ function normStatus(v){
   if(v === "COMPLETO" || v === "N/A") return v;
   return "PENDIENTE";
 }
+
 function isItemComplete(item){
-  if(item.trackMode === "DUAL") return item.adidas_status==="COMPLETO" && item.reebok_status==="COMPLETO";
-  if(item.trackMode === "ADIDAS_ONLY") return item.adidas_status==="COMPLETO";
-  if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO";
-  return item.status === "COMPLETO";
+  if(item.trackMode === "DUAL") return (item.adidas_status==="COMPLETO" || item.adidas_status==="N/A") && (item.reebok_status==="COMPLETO" || item.reebok_status==="N/A");
+  if(item.trackMode === "ADIDAS_ONLY") return item.adidas_status==="COMPLETO" || item.adidas_status==="N/A";
+  if(item.trackMode === "REEBOK_ONLY") return item.reebok_status==="COMPLETO" || item.reebok_status==="N/A";
+  return item.status === "COMPLETO" || item.status === "N/A";
 }
+
 function renderMicroShipmentOptions(){
   const sel = document.getElementById("microShipmentSelect");
   if(!sel) return;
@@ -1241,14 +1420,17 @@ function renderMicroShipmentOptions(){
   sel.value = (prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) ? prev : INTERCOMPANY_KEY;
   microState.selectedKey = sel.value;
 }
+
 function currentSelectionItems(){
   if(microState.selectedKey === INTERCOMPANY_KEY){
     return microState.items.filter(it=> it.proc==="INTERCOMPANY" && !it.shipmentId);
   }
   return microState.items.filter(it=> it.shipmentId === microState.selectedKey);
 }
+
 function renderMicroThead(trackMode){
   const thead = document.getElementById("microThead");
+  if(!thead) return;
   if(trackMode === "DUAL"){
     thead.innerHTML = `<tr><th rowspan="2">Orden</th><th rowspan="2">Actividad</th><th colspan="3" class="brand-col-head ADIDAS">ADIDAS</th><th colspan="3" class="brand-col-head REEBOK">REEBOK</th><th rowspan="2">Acciones</th></tr><tr><th class="brand-col-head ADIDAS">Status</th><th class="brand-col-head ADIDAS">Fecha</th><th class="brand-col-head ADIDAS">Obs</th><th class="brand-col-head REEBOK">Status</th><th class="brand-col-head REEBOK">Fecha</th><th class="brand-col-head REEBOK">Obs</th></tr>`;
   } else if(trackMode === "ADIDAS_ONLY"){
@@ -1259,17 +1441,21 @@ function renderMicroThead(trackMode){
     thead.innerHTML = `<tr><th>Orden</th><th>Actividad</th><th>Status</th><th>Fecha</th><th>Obs</th><th>Acciones</th></tr>`;
   }
 }
+
 function statusSelectHtml(id, field, value){
   const v = value || "";
   return `<select class="inline-status" data-id="${id}" data-field="${field}"><option value="" ${v===""?"selected":""}>PENDIENTE</option><option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option><option value="N/A" ${v==="N/A"?"selected":""}>N/A</option></select>`;
 }
+
 function dateInputHtml(id, field, value){
   const v = /^\d{4}-\d{2}-\d{2}$/.test(value||"") ? value : "";
   return `<input type="date" class="inline-fecha" data-id="${id}" data-field="${field}" value="${v}">`;
 }
+
 function obsInputHtml(id, field, value){
   return `<input type="text" class="inline-obs" data-id="${id}" data-field="${field}" value="${escapeHtml(value||"")}">`;
 }
+
 function renderMicroprocesos(){
   const isShipment = microState.selectedKey !== INTERCOMPANY_KEY;
   const sh = isShipment ? (state.shipmentsMap[microState.selectedKey] ? {...state.shipmentsMap[microState.selectedKey], id: microState.selectedKey} : null) : null;
@@ -1288,16 +1474,20 @@ function renderMicroprocesos(){
     }
     return true;
   }).sort((a,b)=> (Number(a.ord)||0) - (Number(b.ord)||0));
+  
   const tbody = document.getElementById("microTbody");
   const emptyEl = document.getElementById("emptyMicro");
+  if(!tbody) return;
+  
   document.getElementById("microCount").textContent = filtered.length;
   document.getElementById("microDoneCount").textContent = filtered.filter(isItemComplete).length;
+  
   if(filtered.length===0){
     tbody.innerHTML = "";
-    emptyEl.style.display = "block";
+    if(emptyEl) emptyEl.style.display = "block";
     return;
   }
-  emptyEl.style.display = "none";
+  if(emptyEl) emptyEl.style.display = "none";
   tbody.innerHTML = filtered.map(it=>{
     const orderCell = `<td><b>${escapeHtml(String(it.ord!=null?it.ord:""))}</b></td><td class="wrap">${escapeHtml(it.act||"")}</td>`;
     const actionsCell = `<td style="white-space:nowrap;"><button class="btn small" data-maction="edit" data-id="${it.id}">✏️</button><button class="btn small danger" data-maction="delete" data-id="${it.id}">🗑️</button></td>`;
@@ -1313,9 +1503,11 @@ function renderMicroprocesos(){
     return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
   }).join("");
 }
+
 document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ microState.selectedKey = e.target.value; renderMicroprocesos(); });
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
+
 document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
@@ -1323,8 +1515,10 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   if(!item) return;
   item[el.dataset.field] = el.value || "";
   microSave();
+  checkAllAlerts();
   showToast("✅ Actividad actualizada en la nube");
 });
+
 document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-obs")) return;
@@ -1332,7 +1526,7 @@ document.getElementById("microTbody").addEventListener("blur", (e)=>{
   if(!item) return;
   item[el.dataset.field] = el.value.trim() || "";
   microSave();
-  showToast("✅ Observación guardada");
+  showToast("✅ Observación guardada en la nube");
 }, true);
 
 document.getElementById("microTbody").addEventListener("click",(e)=>{
@@ -1344,6 +1538,7 @@ document.getElementById("microTbody").addEventListener("click",(e)=>{
       microState.items = microState.items.filter(it=>it.id!==id);
       microSave();
       renderMicroprocesos();
+      checkAllAlerts();
       showToast("🗑️ Actividad eliminada");
     }
   } else if(btn.dataset.maction==="edit"){
@@ -1351,6 +1546,7 @@ document.getElementById("microTbody").addEventListener("click",(e)=>{
     if(item) openMicroModal(item);
   }
 });
+
 function openMicroModal(item){
   microState.editingId = item ? item.id : null;
   document.getElementById("microModalTitle").textContent = item ? "✏️ Editar Actividad" : "+ Agregar Actividad";
@@ -1375,9 +1571,9 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
     trackMode: "SINGLE",
     ord: ordRaw === "" ? null : Number(ordRaw),
     act,
-    status: document.getElementById("m_status").value || null,
-    fecha: document.getElementById("m_fecha").value || null,
-    obs: document.getElementById("m_obs").value.trim() || null
+    status: document.getElementById("m_status").value || "",
+    fecha: document.getElementById("m_fecha").value || "",
+    obs: document.getElementById("m_obs").value.trim() || ""
   };
   if(microState.editingId){
     const idx = microState.items.findIndex(it=>it.id===microState.editingId);
@@ -1388,11 +1584,12 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   microSave();
   closeMicroModal();
   renderMicroprocesos();
+  checkAllAlerts();
   showToast("✅ Actividad guardada");
 });
 
 /* =========================================================
-   9. HOJA DE RESÚMENES (VISTA CONSOLIDADA COMPATIBLE CON EXCEL)
+   10. HOJA DE RESÚMENES (VISTA CONSOLIDADA COMPATIBLE CON EXCEL)
 ========================================================= */
 const RESUMEN_MESES = ["JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
 const CHANNEL_COLUMNS = [
@@ -1402,10 +1599,12 @@ const CHANNEL_COLUMNS = [
 ];
 const INTERCOMPANY_CHANNELS = ["OUTLET","TELESHOP","MARATHON","WEB","TAF","TRANS","DEPSI"];
 const GRUPOS = ["Calzado","Ropa","Accesorios"];
+
 function normTxt(s){
   if(s === null || s === undefined) return "";
   return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 }
+
 const CHANNEL_ALIAS_MAP = (function(){
   const raw = {
     "MARATHON": ["MARATHON", "MARATHON SPORTS", "MARATHONSPORTS"],
@@ -1453,6 +1652,7 @@ function resolveChannel(raw, allowedList){
   if(allowedList && !allowedList.includes(canon)) return null;
   return canon;
 }
+
 function resolveGrupo(raw){
   const key = normTxt(raw);
   if(key === "C" || key.startsWith("CALZ")) return "Calzado";
@@ -1460,17 +1660,20 @@ function resolveGrupo(raw){
   if(key === "A" || key.startsWith("ACC")) return "Accesorios";
   return null;
 }
+
 function resolveMarca(raw){
   const key = normTxt(raw);
   if(key === "2" || key === "002" || key.includes("ADIDAS")) return "ADIDAS";
   if(key === "1" || key === "004" || key.includes("REEBOK")) return "REEBOK";
   return key || "ADIDAS";
 }
+
 function blankChannels(){
   const o = {};
   CHANNEL_COLUMNS.forEach(c => o[c] = 0);
   return o;
 }
+
 const resumenState = { mes: "JULIO", months: {} };
 RESUMEN_MESES.forEach(m => resumenState.months[m] = []);
 
@@ -1489,9 +1692,11 @@ function findShipmentInfo(nombreEmbarque){
     return sName === target || target.includes(sName) || sName.includes(target);
   });
 }
+
 function rowKey(block, embarque, marca, grupo){
   return block + "||" + normTxt(embarque) + "||" + normTxt(marca) + "||" + grupo;
 }
+
 function ensureRow(mes, block, embarque, marca, grupo, meta){
   if(!Array.isArray(resumenState.months[mes])) resumenState.months[mes] = [];
   const list = resumenState.months[mes];
@@ -1516,9 +1721,11 @@ function ensureRow(mes, block, embarque, marca, grupo, meta){
   }
   return row;
 }
+
 function ensureTriadRows(mes, block, embarque, marca, meta){
   GRUPOS.forEach(g => ensureRow(mes, block, embarque, marca, g, meta));
 }
+
 function findHeaderRow(aoa, requiredAliases){
   const maxScan = Math.min(aoa.length, 30);
   for(let r = 0; r < maxScan; r++){
@@ -1537,6 +1744,7 @@ function findHeaderRow(aoa, requiredAliases){
   }
   return null;
 }
+
 function getColIdx(colMap, aliases){
   for(const alias of aliases){
     for(const key in colMap){
@@ -1545,9 +1753,11 @@ function getColIdx(colMap, aliases){
   }
   return undefined;
 }
+
 function cellStr(row, idx){
   return (idx === undefined || idx === null || row[idx] === undefined || row[idx] === null) ? "" : String(row[idx]).trim();
 }
+
 function cellNum(row, idx){
   if(idx === undefined || idx === null || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
   const n = typeof row[idx] === "number" ? row[idx] : parseFloat(String(row[idx]).replace(/,/g, ""));
@@ -1692,15 +1902,19 @@ function handleResumenFiles(fileList){
 
 function showResumenLog(log){
   const el = document.getElementById("resumenImportLog");
+  if(!el) return;
   if(log.length === 0){ el.style.display = "none"; return; }
   el.style.display = "block";
   el.innerHTML = log.map(l => `<div class="${l.type === 'err' ? 'err' : 'ok'}">${l.type === 'err' ? '❌' : '✅'} ${escapeHtml(l.msg)}</div>`).join("");
 }
+
 function rowCantidadTotal(row){
   return CHANNEL_COLUMNS.reduce((sum, c) => sum + (Number(row.channels[c]) || 0), 0);
 }
+
 function renderResumenThead(){
   const thead = document.getElementById("resumenThead");
+  if(!thead) return;
   thead.innerHTML = `
     <tr>
       <th style="min-width:140px;">INGRESOS EMBARQUE</th>
@@ -1722,13 +1936,16 @@ function renderResumen(){
   renderResumenThead();
   const rawList = resumenState.months[resumenState.mes] || [];
   const emptyEl = document.getElementById("emptyResumen");
+  const tbodyEl = document.getElementById("resumenTbody");
+  if(!tbodyEl) return;
+  
   document.querySelectorAll(".month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
   if(rawList.length === 0){
-    document.getElementById("resumenTbody").innerHTML = "";
-    emptyEl.style.display = "block";
+    tbodyEl.innerHTML = "";
+    if(emptyEl) emptyEl.style.display = "block";
     return;
   }
-  emptyEl.style.display = "none";
+  if(emptyEl) emptyEl.style.display = "none";
   const blocks = ["INGRESOS EMBARQUE", "INTERCOMPANIES"];
   const structure = {};
   blocks.forEach(b => structure[b] = []);
@@ -1845,7 +2062,6 @@ function renderResumen(){
       });
     }
   });
-
   GRUPOS.forEach((gName, idx) => {
     const gChannels = totalsByGrupo[gName];
     const gTotal = CHANNEL_COLUMNS.reduce((sum, c) => sum + (gChannels[c] || 0), 0);
@@ -1865,7 +2081,6 @@ function renderResumen(){
     }
     html += `</tr>`;
   });
-
   const grandTotalAll = CHANNEL_COLUMNS.reduce((sum, c) => sum + (grandTotals[c] || 0), 0);
   html += `<tr class="grand-total-row">
     <td colspan="7" style="border:none;background:transparent;"></td>
@@ -1874,12 +2089,13 @@ function renderResumen(){
     ${CHANNEL_COLUMNS.map(c => `<td class="grand-channel">${grandTotals[c] ? grandTotals[c].toLocaleString() : 0}</td>`).join("")}
     <td style="border:none;background:transparent;"></td>
   </tr>`;
-  document.getElementById("resumenTbody").innerHTML = html;
+  tbodyEl.innerHTML = html;
   populateResumenGroupSelect(rawList);
 }
 
 function populateResumenGroupSelect(list){
   const sel = document.getElementById("resumenGroupSelect");
+  if(!sel) return;
   const seen = new Set();
   let opts = `<option value="">— Selecciona —</option>`;
   list.forEach(r => {
@@ -1897,26 +2113,31 @@ document.getElementById("resumenMonthTabs").addEventListener("click", (e) => {
   resumenState.mes = btn.dataset.mes;
   renderResumen();
 });
+
 const resumenDropzone = document.getElementById("resumenDropzone");
 const resumenFileInput = document.getElementById("resumenFileInput");
-resumenDropzone.addEventListener("click", () => resumenFileInput.click());
-resumenFileInput.addEventListener("change", (e) => { handleResumenFiles(e.target.files); e.target.value = ""; });
-resumenDropzone.addEventListener("dragover", (e) => { e.preventDefault(); resumenDropzone.classList.add("dragover"); });
-resumenDropzone.addEventListener("dragleave", () => { resumenDropzone.classList.remove("dragover"); });
-resumenDropzone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  resumenDropzone.classList.remove("dragover");
-  if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
-});
+if(resumenDropzone && resumenFileInput){
+  resumenDropzone.addEventListener("click", () => resumenFileInput.click());
+  resumenFileInput.addEventListener("change", (e) => { handleResumenFiles(e.target.files); e.target.value = ""; });
+  resumenDropzone.addEventListener("dragover", (e) => { e.preventDefault(); resumenDropzone.classList.add("dragover"); });
+  resumenDropzone.addEventListener("dragleave", () => { resumenDropzone.classList.remove("dragover"); });
+  resumenDropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    resumenDropzone.classList.remove("dragover");
+    if(e.dataTransfer && e.dataTransfer.files) handleResumenFiles(e.dataTransfer.files);
+  });
+}
+
 document.getElementById("btnRemoveResumenGroup").addEventListener("click", () => {
   const sel = document.getElementById("resumenGroupSelect");
-  if(!sel.value) return;
+  if(!sel || !sel.value) return;
   const [block, embarque, marca] = sel.value.split("||");
   resumenState.months[resumenState.mes] = (resumenState.months[resumenState.mes] || []).filter(r => !(r.block === block && normTxt(r.embarque) === normTxt(embarque) && normTxt(r.marca) === normTxt(marca)));
   resumenSave();
   renderResumen();
   showToast("🗑️ Quitado del mes");
 });
+
 document.getElementById("btnClearResumenMonth").addEventListener("click", () => {
   if(!confirm(`¿Limpiar todos los datos de ${resumenState.mes}?`)) return;
   resumenState.months[resumenState.mes] = [];
@@ -1924,6 +2145,7 @@ document.getElementById("btnClearResumenMonth").addEventListener("click", () => 
   renderResumen();
   showToast("🧹 Mes limpiado");
 });
+
 document.getElementById("btnExportResumen").addEventListener("click", () => {
   const tbl = document.getElementById("resumenTable");
   const wb = XLSX.utils.table_to_book(tbl, { sheet: `RESUMEN_${resumenState.mes}` });
@@ -1932,7 +2154,7 @@ document.getElementById("btnExportResumen").addEventListener("click", () => {
 });
 
 /* =========================================================
-   10. INICIALIZACIÓN
+   11. INICIALIZACIÓN
 ========================================================= */
 initFirebase();
 })();
