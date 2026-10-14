@@ -563,13 +563,16 @@ function initFirebase(){
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
+    
     connectedRef.on("value", (snap)=>{
       setSyncStatus(snap.val() === true ? "online" : "offline");
     });
+    
     shipmentsRef.on("value",(snap)=>{
       state.shipmentsMap = snap.val() || {};
       renderAll();
     });
+    
     holidaysRef.on("value",(snap)=>{
       const val = snap.val();
       state.holidays = Array.isArray(val) ? val : (val ? Object.values(val) : []);
@@ -578,9 +581,9 @@ function initFirebase(){
       renderAll();
     });
     
-    // LISTENER MICROPROCESOS PROTEGIDO CONTRA SOBREESCRITURAS
+    // LISTENER CENTRAL DE MICROPROCESOS PROTEGIDO
     microRef.on("value", (snap)=>{
-      if (isSavingMicro) return; // Si el usuario está guardando ahora, ignorar lectura de firebase
+      if (isSavingMicro) return; // Se omite la lectura si el propio usuario acaba de guardar
       const val = snap.val();
       if(val){
         microState.items = Array.isArray(val) ? val : Object.values(val);
@@ -1329,7 +1332,7 @@ document.getElementById("monthPicker").addEventListener("change", renderConsolid
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
 
 /* =========================================================
-   9. MICROPROCESOS (CORREGIDO PARA GUARDADO EN LA NUBE)
+   9. MICROPROCESOS (CORREGIDO DE RAÍZ: GUARDADO POR DICCIONARIO)
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
@@ -1342,7 +1345,7 @@ const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
 let isSavingMicro = false;
 
-// Evitar cadenas vacías "" en Firebase, reemplazándolas con null
+// Evitar cadenas vacías "" en Firebase, reemplazándolas con null para no generar objetos rotos
 function cleanTaskItem(item) {
   const clean = { ...item };
   Object.keys(clean).forEach(key => {
@@ -1353,29 +1356,28 @@ function cleanTaskItem(item) {
   return clean;
 }
 
+// NUEVA LÓGICA DE GUARDADO: 
+// Convierte el array en un "Diccionario (Objeto)" donde cada clave es el ID único de la tarea.
+// Esto soluciona por completo el bug de índices desplazados de Firebase.
 function microSave() {
   if (cloudMode && microRef) {
     isSavingMicro = true;
-    const cleanItems = microState.items.map(cleanTaskItem);
-    microRef.set(cleanItems, (err) => {
-      isSavingMicro = false;
+    
+    // Transformar lista a Diccionario
+    const dict = {};
+    microState.items.forEach(it => {
+      dict[it.id] = cleanTaskItem(it);
+    });
+
+    // Se liberará la protección de escritura pase lo que pase para evitar bloqueos
+    setTimeout(() => { isSavingMicro = false; }, 1500);
+
+    // Sobreescribe atómicamente la lista completa asegurando consistencia 100%
+    microRef.set(dict, (err) => {
       if (err) {
         console.error("Error al guardar microprocesos:", err);
         showToast("❌ Error guardando en la nube", "error");
       }
-    });
-  }
-}
-
-// Guardado puntual de celda/actividad
-function updateSingleTaskInCloud(itemId) {
-  const idx = microState.items.findIndex(it => it.id === itemId);
-  if (idx !== -1 && cloudMode && microRef) {
-    isSavingMicro = true;
-    const cleaned = cleanTaskItem(microState.items[idx]);
-    microRef.child(idx).set(cleaned, (err) => {
-      isSavingMicro = false;
-      if (err) microSave(); 
     });
   }
 }
@@ -1529,7 +1531,7 @@ document.getElementById("microShipmentSelect").addEventListener("change",(e)=>{ 
 document.getElementById("microStatusFilter").addEventListener("change",(e)=>{ microState.statusFilter = e.target.value; renderMicroprocesos(); });
 document.getElementById("microSearch").addEventListener("input",(e)=>{ microState.search = e.target.value; renderMicroprocesos(); });
 
-// Evento que capta cambios en Estado ("COMPLETO") y en Fecha
+// Evento INMEDIATO DE GUARDADO para selects (COMPLETO, PENDIENTE) y fechas
 document.getElementById("microTbody").addEventListener("change", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-status") && !el.classList.contains("inline-fecha")) return;
@@ -1538,13 +1540,13 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   const item = microState.items.find(it=>it.id===itemId);
   if(item){
     item[field] = el.value || null;
-    updateSingleTaskInCloud(itemId);
+    microSave(); // <- AQUÍ ES DONDE PASA LA MAGIA
     checkAllAlerts();
     showToast("✅ Cambio guardado al instante en la nube");
   }
 });
 
-// Evento que capta lo que se escriba en Observaciones al perder el foco
+// Evento INMEDIATO DE GUARDADO para Observaciones cuando haces clic fuera
 document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const el = e.target;
   if(!el.classList.contains("inline-obs")) return;
@@ -1553,7 +1555,7 @@ document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const item = microState.items.find(it=>it.id===itemId);
   if(item){
     item[field] = el.value.trim() || null;
-    updateSingleTaskInCloud(itemId);
+    microSave();
     showToast("✅ Observación guardada en la nube");
   }
 }, true);
