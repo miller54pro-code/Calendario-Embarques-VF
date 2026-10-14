@@ -569,6 +569,7 @@ function initFirebase(){
     });
     
     shipmentsRef.on("value",(snap)=>{
+      shipmentsLoaded = true;
       state.shipmentsMap = snap.val() || {};
       renderAll();
     });
@@ -583,19 +584,24 @@ function initFirebase(){
     
     // LISTENER CENTRAL DE MICROPROCESOS PROTEGIDO
     microRef.on("value", (snap)=>{
-      if (isSavingMicro) return; // Se omite la lectura si el propio usuario acaba de guardar
-      const val = snap.val();
-      if(val){
-        microState.items = Array.isArray(val) ? val : Object.values(val);
-      } else {
-        microState.items = [];
-      }
-      ensureTasksForAllShipments();
-      renderMicroprocesos();
-      checkAllAlerts();
-    });
+    const val = snap.val();
+    if(val){
+      microState.items = Array.isArray(val)
+        ? val.filter(Boolean)
+        : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
+    } else {
+      microState.items = [];
+    }
+    microLoaded = true;
+    ensureTasksForAllShipments();
+    // No redibujar si el usuario está escribiendo una observación
+    const ae = document.activeElement;
+    const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA/.test(ae.tagName);
+    if(!typing) renderMicroprocesos();
+    checkAllAlerts();
+  });
 
-    resumenRef.on("value",(snap)=>{
+  resumenRef.on("value",(snap)=>{
       const val = snap.val();
       if(val && typeof val === "object"){
         resumenState.months = val;
@@ -1262,8 +1268,9 @@ function saveShipment(id, data){
   }
 }
 function deleteShipment(id){
+  const delIds = microState.items.filter(it=> it.shipmentId === id).map(it=>it.id);
   microState.items = microState.items.filter(it=> it.shipmentId !== id);
-  microSave();
+  microDeleteItems(delIds);
   if(cloudMode){
     shipmentsRef.child(id).remove();
   } else {
@@ -1343,7 +1350,8 @@ const TASK_TEMPLATES = {
 
 const INTERCOMPANY_KEY = "__INTERCOMPANY__";
 const microState = { items: [], selectedKey: INTERCOMPANY_KEY, statusFilter: "TODOS", search: "", editingId: null };
-let isSavingMicro = false;
+let microLoaded = false;      // ya llegaron los microprocesos desde Firebase
+let shipmentsLoaded = false;  // ya llegaron los embarques desde Firebase
 
 // Evitar cadenas vacías "" en Firebase, reemplazándolas con null para no generar objetos rotos
 function cleanTaskItem(item) {
@@ -1356,30 +1364,26 @@ function cleanTaskItem(item) {
   return clean;
 }
 
-// NUEVA LÓGICA DE GUARDADO: 
-// Convierte el array en un "Diccionario (Objeto)" donde cada clave es el ID único de la tarea.
-// Esto soluciona por completo el bug de índices desplazados de Firebase.
-function microSave() {
-  if (cloudMode && microRef) {
-    isSavingMicro = true;
-    
-    // Transformar lista a Diccionario
-    const dict = {};
-    microState.items.forEach(it => {
-      dict[it.id] = cleanTaskItem(it);
-    });
-
-    // Se liberará la protección de escritura pase lo que pase para evitar bloqueos
-    setTimeout(() => { isSavingMicro = false; }, 1500);
-
-    // Sobreescribe atómicamente la lista completa asegurando consistencia 100%
-    microRef.set(dict, (err) => {
-      if (err) {
-        console.error("Error al guardar microprocesos:", err);
-        showToast("❌ Error guardando en la nube", "error");
-      }
-    });
-  }
+// GUARDADO GRANULAR: nunca se sobreescribe toda la lista, solo la tarea / campo que cambió.
+function microPersist(updates){
+  if(!(cloudMode && microRef)) return;
+  microRef.update(updates, (err)=>{
+    if(err){
+      console.error("Error al guardar microprocesos:", err);
+      showToast("❌ Error guardando en la nube", "error");
+    }
+  });
+}
+function microSaveItem(item){
+  if(item) microPersist({ [item.id]: cleanTaskItem(item) });
+}
+function microSaveField(id, field, value){
+  microPersist({ [id + "/" + field]: (value === "" || value === undefined) ? null : value });
+}
+function microDeleteItems(ids){
+  const u = {};
+  ids.forEach(id=>{ u[id] = null; });
+  if(Object.keys(u).length) microPersist(u);
 }
 
 function trackModeFor(tipo, marca){
@@ -1400,23 +1404,32 @@ function generateTasksForShipment(shipment){
   const template = TASK_TEMPLATES[shipment.tipo] || [];
   const trackMode = trackModeFor(shipment.tipo, shipment.marca);
   return template.map(t=>({
-    id: generateId(), shipmentId: shipment.id, proc: shipment.tipo, trackMode,
+    id: ("t_" + shipment.id + "_" + t.ord).replace(/[.#$\[\]\/]/g,"_"), shipmentId: shipment.id, proc: shipment.tipo, trackMode,
     ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
   }));
 }
 
 function ensureTasksForAllShipments(){
-  let changed = false;
+  // CLAVE: en modo nube NO crear tareas hasta que embarques Y microprocesos hayan cargado,
+  // de lo contrario se generan tareas en blanco que pisan lo ya guardado.
+  if(cloudMode && !(microLoaded && shipmentsLoaded)) return;
+  const existingIds = new Set(microState.items.map(it=>it.id));
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
+  const created = [];
   Object.keys(state.shipmentsMap).forEach(id=>{
     if(existingShipmentIds.has(id)) return;
     const sh = {...state.shipmentsMap[id], id};
     if(!sh.tipo || !TASK_TEMPLATES[sh.tipo]) return;
-    microState.items.push(...generateTasksForShipment(sh));
-    changed = true;
+    generateTasksForShipment(sh).forEach(t=>{
+      if(existingIds.has(t.id)) return;
+      microState.items.push(t);
+      created.push(t);
+    });
   });
-  if(changed){
-    microSave();
+  if(created.length){
+    const u = {};
+    created.forEach(t=>{ u[t.id] = cleanTaskItem(t); });
+    microPersist(u);   // solo agrega las faltantes
   }
 }
 
@@ -1540,7 +1553,7 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   const item = microState.items.find(it=>it.id===itemId);
   if(item){
     item[field] = el.value || null;
-    microSave(); // <- AQUÍ ES DONDE PASA LA MAGIA
+    microSaveField(itemId, field, item[field]);
     checkAllAlerts();
     showToast("✅ Cambio guardado al instante en la nube");
   }
@@ -1555,7 +1568,7 @@ document.getElementById("microTbody").addEventListener("blur", (e)=>{
   const item = microState.items.find(it=>it.id===itemId);
   if(item){
     item[field] = el.value.trim() || null;
-    microSave();
+    microSaveField(itemId, field, item[field]);
     showToast("✅ Observación guardada en la nube");
   }
 }, true);
@@ -1567,7 +1580,7 @@ document.getElementById("microTbody").addEventListener("click",(e)=>{
   if(btn.dataset.maction==="delete"){
     if(confirm("¿Eliminar esta actividad?")){
       microState.items = microState.items.filter(it=>it.id!==id);
-      microSave();
+      microDeleteItems([id]);
       renderMicroprocesos();
       checkAllAlerts();
       showToast("🗑️ Actividad eliminada");
@@ -1606,13 +1619,20 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
     fecha: document.getElementById("m_fecha").value || null,
     obs: document.getElementById("m_obs").value.trim() || null
   };
+  let saved;
   if(microState.editingId){
     const idx = microState.items.findIndex(it=>it.id===microState.editingId);
-    if(idx>-1) microState.items[idx] = {id: microState.editingId, ...data};
+    if(idx>-1){
+      saved = {id: microState.editingId, ...data};
+      // conservar campos de seguimiento (adidas_/reebok_) que el modal no edita
+      microState.items[idx] = {...microState.items[idx], ...saved};
+      saved = microState.items[idx];
+    }
   } else {
-    microState.items.push({id: generateId(), ...data});
+    saved = {id: generateId(), ...data};
+    microState.items.push(saved);
   }
-  microSave();
+  microSaveItem(saved);
   closeMicroModal();
   renderMicroprocesos();
   checkAllAlerts();
