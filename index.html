@@ -2009,33 +2009,55 @@ function tryParseFormatB(aoa, mes, log){
   return true;
 }
 
-function tryParseFormatC(aoa, mes, log){
-  const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"]]);
+function tryParseIntercompanyRestar(aoa, mes, log){
+  // Exigimos que existan las columnas INTERCOMPANY y BODEGA para activar este modo
+  const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"], ["BODEGA"]]);
   if(!header) return false;
+  
   const { rowIndex, colMap } = header;
   const interCol = getColIdx(colMap, ["INTERCOMPANY"]);
   const mrcCol = getColIdx(colMap, ["MARCA"]);
   const grpCol = getColIdx(colMap, ["GRUPO"]);
-  const destCol = getColIdx(colMap, ["CONCEPTO", "BODEGA", "CANAL", "DESTINO"]);
+  const bodegaCol = getColIdx(colMap, ["BODEGA"]); // Ignoramos concepto y embarque
   const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
+  
+  // Si falta alguna columna clave, dejamos que otro formato lo intente
+  if(interCol === undefined || bodegaCol === undefined || qtyCol === undefined) return false;
+
   let count = 0;
+  let ignoradas = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
     const intercompany = cellStr(row, interCol);
     if(!intercompany) continue;
+    
     const marca = resolveMarca(cellStr(row, mrcCol));
     const grupo = resolveGrupo(cellStr(row, grpCol));
-    const destino = resolveChannel(cellStr(row, destCol), INTERCOMPANY_CHANNELS);
+    const bodegaRaw = cellStr(row, bodegaCol);
     const cantidad = cellNum(row, qtyCol);
+    
+    // Resolvemos el destino SOLO en base a la columna BODEGA (TRANS, DEPCO, DEPSI)
+    const destino = resolveChannel(bodegaRaw, ["TRANS", "DEPCO", "DEPSI"]);
+    
     if(!marca || !grupo || cantidad === 0) continue;
+    
+    if(!destino){
+        ignoradas++; // Si la bodega no es TRANS/DEPCO/DEPSI, la ignoramos
+        continue;
+    }
+    
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
-    if(destino){
-      targetRow.channels[destino] = (targetRow.channels[destino] || 0) + cantidad;
-    }
+    
+    // LA REGLA CLAVE: Restamos la cantidad del canal (usamos Math.abs para garantizar que sea una resta)
+    targetRow.channels[destino] = (targetRow.channels[destino] || 0) - Math.abs(cantidad);
     count++;
   }
-  log.push({ type: "ok", msg: `Intercompany: ${count} registros procesados.` });
+  
+  let msg = `Intercompany (Salidas): ${count} registros procesados restando de BODEGA.`;
+  if(ignoradas > 0) msg += ` (${ignoradas} ignorados por bodega no válida).`;
+  log.push({ type: "ok", msg });
+  
   return true;
 }
 
@@ -2118,8 +2140,13 @@ function processWorkbook(workbook, mes, fileName, log, ctx){
     const ws = workbook.Sheets[sheetName];
     const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
     if(aoa.length === 0) continue;
-    // Base Quick va al final: los otros formatos exigen columnas propias (EMBARQUE, INSTRUCCION, INTERCOMPANY)
-    if(tryParseFormatB(aoa, mes, log) || tryParseFormatC(aoa, mes, log) || tryParseFormatA(aoa, mes, log) || tryParseBaseQuick(aoa, mes, log, ctx)){
+    
+    // EVALUACIÓN EN CASCADA: Agregamos tryParseIntercompanyRestar antes del Format C
+    if(tryParseFormatB(aoa, mes, log) || 
+       tryParseIntercompanyRestar(aoa, mes, log) || 
+       tryParseFormatC(aoa, mes, log) || 
+       tryParseFormatA(aoa, mes, log) || 
+       tryParseBaseQuick(aoa, mes, log, ctx)){
       matched = true;
     }
   }
@@ -2129,7 +2156,6 @@ function processWorkbook(workbook, mes, fileName, log, ctx){
     log.push({ type: "ok", msg: `"${fileName}" consolidado en ${mes}.` });
   }
 }
-
 function handleResumenFiles(fileList){
   const log = [];
   const files = Array.from(fileList);
