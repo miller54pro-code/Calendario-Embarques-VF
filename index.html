@@ -336,6 +336,8 @@
   </div>
   <div class="card">
     <div class="card-head"><h2>Embarques registrados</h2><span class="muted" id="countShipments">0 embarques</span></div>
+    <!-- FILTRO POR MES EN TABLA DE ENTRADAS -->
+    <div class="month-tabs-container" data-tab-filter="inputs" style="margin-bottom:14px;"></div>
     <div style="overflow-x:auto;">
       <table>
         <thead>
@@ -361,6 +363,8 @@
     <h2 style="color:var(--navy);font-size:18px;">🔴 Gantt de embarques — ADIDAS</h2>
   </div>
   <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como ADIDAS y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <!-- FILTRO POR MES EN ADIDAS -->
+  <div class="month-tabs-container" data-tab-filter="adidas" style="margin-bottom:14px;"></div>
   <div id="adidasAlerts" class="alerts-container"></div>
   <div id="adidasContainer"></div>
 </div>
@@ -370,6 +374,8 @@
     <h2 style="color:var(--navy);font-size:18px;">🔵 Gantt de embarques — REEBOK</h2>
   </div>
   <p class="muted" style="margin:0 0 10px 0;font-size:12px;">Incluye embarques marcados como REEBOK y como <b>ADI &amp; RBK</b>. Puedes <b>arrastrar y soltar</b> las actividades para moverlas de día.</p>
+  <!-- FILTRO POR MES EN REEBOK -->
+  <div class="month-tabs-container" data-tab-filter="reebok" style="margin-bottom:14px;"></div>
   <div id="reebokAlerts" class="alerts-container"></div>
   <div id="reebokContainer"></div>
 </div>
@@ -383,6 +389,8 @@
         <select id="monthPicker"></select>
       </div>
     </div>
+    <!-- FILTRO POR MES EN CONSOLIDADO -->
+    <div class="month-tabs-container" data-tab-filter="consolidado" style="margin-bottom:14px;"></div>
     <div id="consolidadoAlerts" class="alerts-container"></div>
     <div id="consolidadoGrid" class="gantt-scroll"></div>
     <div class="empty" id="emptyConsolidado" style="display:none;">No hay embarques con fechas en el mes seleccionado.</div>
@@ -400,6 +408,8 @@
     <p class="muted" style="margin:0 0 12px 0;font-size:12px;">
       Cada embarque de la <b>Tabla de Entradas</b> genera su propio checklist sincronizado en la nube para todo el equipo.
     </p>
+    <!-- FILTRO POR MES EN MICROPROCESOS -->
+    <div class="month-tabs-container" data-tab-filter="microprocesos" style="margin-bottom:14px;"></div>
     <div id="microAlerts" class="alerts-container"></div>
     <div class="micro-filters">
       <div class="field" style="min-width:280px;">
@@ -592,7 +602,6 @@ function initFirebase(){
       }
       microLoaded = true;
       ensureTasksForAllShipments();
-      // No redibujar si el usuario está escribiendo una observación
       const ae = document.activeElement;
       const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA/.test(ae.tagName);
       if(!typing) renderMicroprocesos();
@@ -612,16 +621,78 @@ function initFirebase(){
   }
 }
 /* =========================================================
-   1. ESTADO GLOBAL
+   1. ESTADO GLOBAL & FILTRADO POR MES
 ========================================================= */
+const MONTH_NAMES_ES = [
+  "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+  "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+];
+
 const state = {
   shipmentsMap: {},
   holidays: [],
-  editingId: null
+  editingId: null,
+  selectedMonth: "TODOS"
 };
+
 function getShipmentsArray(){
   return Object.keys(state.shipmentsMap).map(id=>({...state.shipmentsMap[id], id}));
 }
+
+function getShipmentMonthName(sh){
+  const dateStr = sh.fechaInstruccion || sh.fechaArriboCD || sh.fechaArriboDepco;
+  if(!dateStr) return null;
+  const d = parseISO(dateStr);
+  if(!d || isNaN(d.getTime())) return null;
+  return MONTH_NAMES_ES[d.getMonth()];
+}
+
+function getShipmentsFilteredByMonth(){
+  const all = getShipmentsArray();
+  if(!state.selectedMonth || state.selectedMonth === "TODOS") return all;
+  return all.filter(sh => getShipmentMonthName(sh) === state.selectedMonth);
+}
+
+function renderMonthFilterBars(){
+  const containers = document.querySelectorAll(".month-tabs-container");
+  const monthsList = ["TODOS", ...MONTH_NAMES_ES];
+  
+  containers.forEach(container => {
+    let buttonsHtml = monthsList.map(m => {
+      const activeCls = (state.selectedMonth === m) ? "active" : "";
+      return `<button class="month-btn ${activeCls}" data-filter-month="${m}">${m}</button>`;
+    }).join("");
+    
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f6f8fc;padding:8px 12px;border-radius:8px;border:1px solid var(--line);">
+        <span style="font-weight:700;font-size:11.5px;color:var(--navy);">🗓️ Filtro por mes:</span>
+        <div class="month-tabs" style="margin-top:0;">${buttonsHtml}</div>
+      </div>`;
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-filter-month]");
+  if(!btn) return;
+  const mes = btn.dataset.filterMonth;
+  state.selectedMonth = mes;
+  
+  if(mes !== "TODOS"){
+    const picker = document.getElementById("monthPicker");
+    if(picker){
+      const idx = MONTH_NAMES_ES.indexOf(mes);
+      if(idx !== -1){
+        const monthNumStr = String(idx + 1).padStart(2, "0");
+        const options = Array.from(picker.options);
+        const match = options.find(opt => opt.value.endsWith("-" + monthNumStr));
+        if(match) picker.value = match.value;
+      }
+    }
+  }
+  
+  renderAll();
+});
+
 function generateId(){
   return "sh_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
 }
@@ -632,6 +703,7 @@ const TIPO_LABELS = {CONSUMO:"CONSUMO", DEPCO:"DEPCO", CONSOLIDADO_OTN:"CONSOLID
 function tipoLabel(tipo){ return TIPO_LABELS[tipo] || tipo; }
 function marcaInitial(marca){ return marca === "ADI_RBK" ? "A+R" : (marca ? marca[0] : "?"); }
 function shipmentBelongsToBrand(sh, marca){ return sh.marca === marca || sh.marca === "ADI_RBK"; }
+
 /* =========================================================
    2. UTILIDADES DE FECHA / MOTOR DE DÍAS HÁBILES
 ========================================================= */
@@ -685,6 +757,7 @@ function dateRange(start, end){
   return days;
 }
 const DOW_LETTERS = ["D","L","M","M","J","V","S"];
+
 /* =========================================================
    3. MOTOR DE CÁLCULO DE ACTIVIDADES & FECHAS MANUALES
 ========================================================= */
@@ -788,6 +861,7 @@ function computeConsolidadoOTN(sh, d0){
   ];
   return applyCustomDates(sh, defaultBars);
 }
+
 /* =========================================================
    4. SISTEMA DE ALERTAS Y VALIDACIÓN GANTT ↔ MICROPROCESOS
 ========================================================= */
@@ -877,7 +951,7 @@ function getAlertsForShipment(sh){
 }
 
 function checkAllAlerts(){
-  const shipments = getShipmentsArray();
+  const shipments = getShipmentsFilteredByMonth();
   let allAlerts = [];
   shipments.forEach(sh=>{
     const shAlerts = getAlertsForShipment(sh);
@@ -919,6 +993,7 @@ function renderAlertsUI(alerts){
     microAlertsEl.innerHTML = buildBanner(alerts, "Pendientes Críticos según Cronograma Gantt");
   }
 }
+
 /* =========================================================
    5. RENDER GANTT & DRAG AND DROP
 ========================================================= */
@@ -1014,14 +1089,18 @@ function escapeHtml(s){
 }
 function renderBrandView(marca, containerId){
   const container = document.getElementById(containerId);
-  const list = getShipmentsArray().filter(s=>shipmentBelongsToBrand(s,marca)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  const list = getShipmentsFilteredByMonth().filter(s=>shipmentBelongsToBrand(s,marca)).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
   if(list.length===0){
-    container.innerHTML = `<div class="empty">No hay embarques de ${marcaLabel(marca)} registrados.</div>`;
+    const msg = (state.selectedMonth && state.selectedMonth !== "TODOS")
+      ? `No hay embarques de ${marcaLabel(marca)} registrados para ${state.selectedMonth}.`
+      : `No hay embarques de ${marcaLabel(marca)} registrados.`;
+    container.innerHTML = `<div class="empty">${msg}</div>`;
     return;
   }
   container.innerHTML = list.map(renderShipmentGantt).join("");
   bindGanttDragAndDrop();
 }
+
 /* =========================================================
    SISTEMA DRAG & DROP DE ACTIVIDADES
 ========================================================= */
@@ -1091,6 +1170,7 @@ document.addEventListener("click", (e)=>{
     showToast("↺ Fechas automáticas restablecidas");
   }
 });
+
 /* =========================================================
    6. VISTA CONSOLIDADA (GANTT MENSUAL)
 ========================================================= */
@@ -1134,7 +1214,7 @@ function renderConsolidated(){
   const colCount = days.length;
   const templateCols = `repeat(${colCount}, minmax(26px,1fr))`;
   const rows = [];
-  getShipmentsArray().forEach(s=>{
+  getShipmentsFilteredByMonth().forEach(s=>{
     const acts = computeActivities(s);
     if(acts.length===0) return;
     const touches = acts.some(a=> a.end >= monthStart && a.start <= monthEnd);
@@ -1144,7 +1224,12 @@ function renderConsolidated(){
   const emptyEl = document.getElementById("emptyConsolidado");
   if(rows.length===0){
     if(gridEl) gridEl.innerHTML = "";
-    if(emptyEl) emptyEl.style.display = "block";
+    if(emptyEl) {
+      emptyEl.textContent = (state.selectedMonth && state.selectedMonth !== "TODOS")
+        ? `No hay embarques registrados para ${state.selectedMonth} en la vista consolidada.`
+        : `No hay embarques con fechas en el mes seleccionado.`;
+      emptyEl.style.display = "block";
+    }
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
@@ -1175,6 +1260,7 @@ function renderConsolidated(){
   });
   if(gridEl) gridEl.innerHTML = html;
 }
+
 /* =========================================================
    7. TABLA DE ENTRADAS (CRUD)
 ========================================================= */
@@ -1182,11 +1268,21 @@ function renderInputsTable(){
   const tbody = document.getElementById("shipmentsTbody");
   const emptyEl = document.getElementById("emptyShipments");
   if(!tbody) return;
-  const list = getShipmentsArray();
-  document.getElementById("countShipments").textContent = `${list.length} embarque(s)`;
+  const list = getShipmentsFilteredByMonth();
+  const totalCount = getShipmentsArray().length;
+  const countText = (state.selectedMonth && state.selectedMonth !== "TODOS") 
+    ? `${list.length} de ${totalCount} embarque(s) en ${state.selectedMonth}`
+    : `${list.length} embarque(s)`;
+  document.getElementById("countShipments").textContent = countText;
+  
   if(list.length===0){
     tbody.innerHTML = "";
-    if(emptyEl) emptyEl.style.display = "block";
+    if(emptyEl) {
+      emptyEl.textContent = (state.selectedMonth && state.selectedMonth !== "TODOS")
+        ? `No hay embarques registrados para ${state.selectedMonth}.`
+        : `Aún no hay embarques. Agrega el primero con el formulario de arriba.`;
+      emptyEl.style.display = "block";
+    }
     return;
   }
   if(emptyEl) emptyEl.style.display = "none";
@@ -1242,6 +1338,7 @@ function fillFormForEdit(s){
   document.getElementById("btnCancelEdit").style.display = "inline-flex";
 }
 function renderAll(){
+  renderMonthFilterBars();
   renderInputsTable();
   renderBrandView("ADIDAS","adidasContainer");
   renderBrandView("REEBOK","reebokContainer");
@@ -1325,6 +1422,7 @@ document.getElementById("btnSaveHolidays").addEventListener("click", ()=>{
   const valid = lines.filter(l=>/^\d{4}-\d{2}-\d{2}$/.test(l));
   saveHolidays(valid);
 });
+
 /* =========================================================
    8. PESTAÑAS
 ========================================================= */
@@ -1344,8 +1442,9 @@ document.querySelectorAll(".tab").forEach(tab=>{
 });
 document.getElementById("monthPicker").addEventListener("change", renderConsolidated);
 document.getElementById("btnPrint").addEventListener("click", ()=> window.print());
+
 /* =========================================================
-   9. MICROPROCESOS (GUARDADO POR DICCIONARIO GRANUAR)
+   9. MICROPROCESOS (GUARDADO POR DICCIONARIO GRANULAR)
 ========================================================= */
 const TASK_TEMPLATES = {
   "CONSUMO": [{"ord": 1, "act": "Instrucciones de importación por producto"}, {"ord": 2, "act": "Instrucciones de embarque por comex"}, {"ord": 3, "act": "Cruce de PTS completos"}, {"ord": 4, "act": "Carga partidas arancelarias"}, {"ord": 5, "act": "Envío plantilla de Catalogación"}, {"ord": 6, "act": "Carga plantilla Catalogación"}, {"ord": 7, "act": "Enviar Solicitud plantilla código EAN"}, {"ord": 8, "act": "Enviar Plantilla ean completa a DM"}, {"ord": 9, "act": "Plantilla EAN cargada"}, {"ord": 10, "act": "Enviar Solicitud plantilla precio FOB"}, {"ord": 11, "act": "Enviar Plantilla Precio FOB a DM"}, {"ord": 12, "act": "Plantilla precio FOB cargada"}, {"ord": 13, "act": "Envío OC a producto"}, {"ord": 14, "act": "CARGA EOT"}, {"ord": 15, "act": "Trabajar respuesta OC de Silvi/Pao"}, {"ord": 16, "act": "*Ingresos TIENDAS"}, {"ord": 17, "act": "*Ingresos MAYORISTA"}, {"ord": 18, "act": "*Elaboración archivos Intercomapny"}, {"ord": 19, "act": "*Envío correo de archivos Intercompanies"}, {"ord": 20, "act": "*Carga precio PVP"}, {"ord": 21, "act": "*Carga precio Intercompany"}, {"ord": 22, "act": "*Carga precio Mayor"}, {"ord": 23, "act": "*Carga precio MKT"}, {"ord": 24, "act": "*Carga precio WEB ADIDAS"}, {"ord": 25, "act": "Número de traslado a DEPSI"}, {"ord": 26, "act": "Respuesta de distribución de tiendas"}, {"ord": 27, "act": "Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN"}, {"ord": 28, "act": "Elaboración Plantilla OCA"}, {"ord": 29, "act": "Elaboración Plantilla CONV OCI"}, {"ord": 30, "act": "Elaboración Plantilla CONV DSITRIBUCIÓN"}, {"ord": 31, "act": "Obtención Plantilla OCI para sap"}, {"ord": 32, "act": "Obtención Plantilla Distribución para sap"}, {"ord": 33, "act": "Crear números OCI en SAP"}, {"ord": 34, "act": "Cuadre precio FOB en SAP de números OCIS"}, {"ord": 35, "act": "Enviar números OCIS a COMEX"}, {"ord": 36, "act": "Enviar correo a DM quite validacion VERFACTEM de OCIS"}, {"ord": 37, "act": "Respuesta comex: \"Los aranceles se calculan correctamente en sap\""}, {"ord": 38, "act": "Crear números de traslados en SAP"}, {"ord": 39, "act": "Enviar números de traslados a CD por correo"}, {"ord": 40, "act": "Enviar etiquetas para producto que va a tiendas"}, {"ord": 41, "act": "Solicitar plantilla Microsite"}, {"ord": 42, "act": "Llena plantilla Microsite"}, {"ord": 43, "act": "Cargar plantilla Microsite por DM"}, {"ord": 44, "act": "LPN"}],
@@ -1443,11 +1542,11 @@ function renderMicroShipmentOptions(){
   const sel = document.getElementById("microShipmentSelect");
   if(!sel) return;
   const prev = microState.selectedKey;
-  const list = getShipmentsArray().filter(s=> TASK_TEMPLATES[s.tipo]).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
+  const list = getShipmentsFilteredByMonth().filter(s=> TASK_TEMPLATES[s.tipo]).sort((a,b)=> (a.fechaInstruccion||"").localeCompare(b.fechaInstruccion||""));
   let html = `<option value="${INTERCOMPANY_KEY}">🔗 Intercompany (general)</option>`;
   html += list.map(s=> `<option value="${s.id}">${marcaLabel(s.marca)} · ${escapeHtml(s.nombre)} · ${tipoLabel(s.tipo)}</option>`).join("");
   sel.innerHTML = html;
-  sel.value = (prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) ? prev : INTERCOMPANY_KEY;
+  sel.value = (prev===INTERCOMPANY_KEY || list.some(s=>s.id===prev)) ? prev : (list.length > 0 ? list[0].id : INTERCOMPANY_KEY);
   microState.selectedKey = sel.value;
 }
 function currentSelectionItems(){
@@ -1623,6 +1722,7 @@ document.getElementById("btnMicroSave").addEventListener("click", ()=>{
   renderAll();
   showToast("✅ Actividad guardada");
 });
+
 /* =========================================================
    10. HOJA DE RESÚMENES (VISTA CONSOLIDADA COMPATIBLE CON EXCEL)
 ========================================================= */
@@ -1949,7 +2049,7 @@ function renderResumen(){
   const tbodyEl = document.getElementById("resumenTbody");
   if(!tbodyEl) return;
   
-  document.querySelectorAll(".month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
+  document.querySelectorAll("#resumenMonthTabs .month-btn").forEach(b => b.classList.toggle("active", b.dataset.mes === resumenState.mes));
   if(rawList.length === 0){
     tbodyEl.innerHTML = "";
     if(emptyEl) emptyEl.style.display = "block";
@@ -2156,6 +2256,7 @@ document.getElementById("btnExportResumen").addEventListener("click", () => {
   XLSX.writeFile(wb, `Resumen_Embarques_${resumenState.mes}_2026.xlsx`);
   showToast("⬇ Archivo Excel exportado");
 });
+
 /* =========================================================
    11. INICIALIZACIÓN
 ========================================================= */
