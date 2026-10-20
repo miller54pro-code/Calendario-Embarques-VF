@@ -640,8 +640,22 @@ function loadLocalBackup(){
 }
 
 function initFirebase(){
-  loadLocalBackup();
-  try{
+  // 1. Cargar datos locales INMEDIATAMENTE al abrir la página
+  const hasData = loadLocalBackup();
+  if (hasData) {
+    renderAll();
+    setSyncStatus("local");
+  }
+
+  // 2. Temporizador de seguridad: si en 3 segundos Firebase no responde, cancelar "Iniciando..."
+  const connectionTimeout = setTimeout(() => {
+    const label = document.getElementById("syncLabel");
+    if (label && label.textContent === "Iniciando...") {
+      setSyncStatus(hasData ? "local" : "offline");
+    }
+  }, 3000);
+
+  try {
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     shipmentsRef = db.ref(FIREBASE_PATH + "/embarques");
@@ -650,58 +664,60 @@ function initFirebase(){
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
-    
-    connectedRef.on("value", (snap)=>{
-      setSyncStatus(snap.val() === true ? "online" : "offline");
+
+    connectedRef.on("value", (snap) => {
+      clearTimeout(connectionTimeout);
+      if (snap.val() === true) {
+        setSyncStatus("online");
+      } else {
+        setSyncStatus("offline");
+      }
     });
-    
-    shipmentsRef.on("value",(snap)=>{
+
+    shipmentsRef.on("value", (snap) => {
       shipmentsLoaded = true;
       const val = snap.val();
-      if(val) state.shipmentsMap = val;
+      if (val) state.shipmentsMap = val;
       saveLocalBackup();
       renderAll();
-    }, (err)=>{
-      console.warn("Error leyendo embarques de Firebase:", err);
-      document.getElementById("firebaseErrorBanner").style.display = "block";
+    }, (err) => {
+      clearTimeout(connectionTimeout);
       setSyncStatus("local");
     });
-    
-    holidaysRef.on("value",(snap)=>{
+
+    holidaysRef.on("value", (snap) => {
       const val = snap.val();
-      if(val) state.holidays = Array.isArray(val) ? val : Object.values(val);
-      const hBox = document.getElementById("holidaysBox");
-      if(hBox) hBox.value = state.holidays.join("\n");
+      if (val) state.holidays = Array.isArray(val) ? val : Object.values(val);
       saveLocalBackup();
       renderAll();
     });
-    
-    microRef.on("value", (snap)=>{
+
+    microRef.on("value", (snap) => {
       const val = snap.val();
-      if(val){
+      if (val) {
         microState.items = Array.isArray(val)
           ? val.filter(Boolean)
-          : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
+          : Object.entries(val).map(([k,v]) => ({ ...v, id: v.id || k }));
       }
       microLoaded = true;
       ensureTasksForAllShipments();
       saveLocalBackup();
-      const ae = document.activeElement;
-      const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
-      if(!typing) renderMicroprocesos();
+      renderMicroprocesos();
       checkAllAlerts();
     });
 
-    resumenRef.on("value",(snap)=>{
+    resumenRef.on("value", (snap) => {
       const val = snap.val();
-      if(val && typeof val === "object"){
+      if (val && typeof val === "object") {
         resumenState.months = val;
         saveLocalBackup();
         renderResumen();
       }
     });
-  }catch(err){
-    console.warn("Error inicializando Firebase. Usando autoguardado local:", err);
+
+  } catch(err) {
+    clearTimeout(connectionTimeout);
+    console.warn("Usando autoguardado local:", err);
     setSyncStatus("local");
     cloudMode = false;
   }
