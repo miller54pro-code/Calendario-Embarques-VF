@@ -640,22 +640,8 @@ function loadLocalBackup(){
 }
 
 function initFirebase(){
-  // 1. Cargar datos locales INMEDIATAMENTE al abrir la página
-  const hasData = loadLocalBackup();
-  if (hasData) {
-    renderAll();
-    setSyncStatus("local");
-  }
-
-  // 2. Temporizador de seguridad: si en 3 segundos Firebase no responde, cancelar "Iniciando..."
-  const connectionTimeout = setTimeout(() => {
-    const label = document.getElementById("syncLabel");
-    if (label && label.textContent === "Iniciando...") {
-      setSyncStatus(hasData ? "local" : "offline");
-    }
-  }, 3000);
-
-  try {
+  loadLocalBackup();
+  try{
     firebase.initializeApp(firebaseConfig);
     db = firebase.database();
     shipmentsRef = db.ref(FIREBASE_PATH + "/embarques");
@@ -664,60 +650,58 @@ function initFirebase(){
     resumenRef = db.ref(FIREBASE_PATH + "/resumen_meses");
     connectedRef = db.ref(".info/connected");
     cloudMode = true;
-
-    connectedRef.on("value", (snap) => {
-      clearTimeout(connectionTimeout);
-      if (snap.val() === true) {
-        setSyncStatus("online");
-      } else {
-        setSyncStatus("offline");
-      }
+    
+    connectedRef.on("value", (snap)=>{
+      setSyncStatus(snap.val() === true ? "online" : "offline");
     });
-
-    shipmentsRef.on("value", (snap) => {
+    
+    shipmentsRef.on("value",(snap)=>{
       shipmentsLoaded = true;
       const val = snap.val();
-      if (val) state.shipmentsMap = val;
+      if(val) state.shipmentsMap = val;
       saveLocalBackup();
       renderAll();
-    }, (err) => {
-      clearTimeout(connectionTimeout);
+    }, (err)=>{
+      console.warn("Error leyendo embarques de Firebase:", err);
+      document.getElementById("firebaseErrorBanner").style.display = "block";
       setSyncStatus("local");
     });
-
-    holidaysRef.on("value", (snap) => {
+    
+    holidaysRef.on("value",(snap)=>{
       const val = snap.val();
-      if (val) state.holidays = Array.isArray(val) ? val : Object.values(val);
+      if(val) state.holidays = Array.isArray(val) ? val : Object.values(val);
+      const hBox = document.getElementById("holidaysBox");
+      if(hBox) hBox.value = state.holidays.join("\n");
       saveLocalBackup();
       renderAll();
     });
-
-    microRef.on("value", (snap) => {
+    
+    microRef.on("value", (snap)=>{
       const val = snap.val();
-      if (val) {
+      if(val){
         microState.items = Array.isArray(val)
           ? val.filter(Boolean)
-          : Object.entries(val).map(([k,v]) => ({ ...v, id: v.id || k }));
+          : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
       }
       microLoaded = true;
       ensureTasksForAllShipments();
       saveLocalBackup();
-      renderMicroprocesos();
+      const ae = document.activeElement;
+      const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
+      if(!typing) renderMicroprocesos();
       checkAllAlerts();
     });
 
-    resumenRef.on("value", (snap) => {
+    resumenRef.on("value",(snap)=>{
       const val = snap.val();
-      if (val && typeof val === "object") {
+      if(val && typeof val === "object"){
         resumenState.months = val;
         saveLocalBackup();
         renderResumen();
       }
     });
-
-  } catch(err) {
-    clearTimeout(connectionTimeout);
-    console.warn("Usando autoguardado local:", err);
+  }catch(err){
+    console.warn("Error inicializando Firebase. Usando autoguardado local:", err);
     setSyncStatus("local");
     cloudMode = false;
   }
@@ -902,7 +886,7 @@ const GANTT_TO_MICRO_MAPPING = {
   "oc_plan": ["Envío OC a producto"],
   "oc_carton": ["Envío OC (LPN) a producto"],
   "oc_canal": ["Trabajar respuesta OC de Silvi/Pao"],
-  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "Trabajar Archivos Intercompany:", “*Ingresos MAYORISTA”],
+  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "Trabajar Archivos Intercompany:"],
   "partidas": ["Carga partidas arancelarias"],
   "envio_pedido": ["*Envío del pedido a COMEX", "*Envío de pedido a comex"],
   "distribucion": ["Respuesta de distribución de tiendas"],
