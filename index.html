@@ -841,17 +841,17 @@ function computeConsolidadoOTN(sh, d0){
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
-  "oc_plan": ["Cruce de PTS completos", "Cruce de PTS completos para creación de OC"],
-  "oc_carton": ["Cruce de PTS completos para creación de OC"],
-  "oc_canal": ["Envío OC a producto", "Envío OC (LPN) a producto"],
-  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "*Carga precio Intercompany", "Trabajar Archivos Intercompany:"],
+  "oc_plan": ["Envío OC a producto"],
+  "oc_carton": ["Envío OC (LPN) a producto"],
+  "oc_canal": ["Trabajar respuesta OC de Silvi/Pao"],
+  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "Trabajar Archivos Intercompany:", “*Ingresos MAYORISTA”],
   "partidas": ["Carga partidas arancelarias"],
   "envio_pedido": ["*Envío del pedido a COMEX", "*Envío de pedido a comex"],
   "distribucion": ["Respuesta de distribución de tiendas"],
   "ocas": ["Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN", "Elaboración Plantilla OCA"],
   "ocas_ocis_lpn": ["Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"],
-  "otn": ["Elaboración Plantilla para OTN (consolidado)", "Crear número de OTN"],
-  "lpn": ["LPN", "LPN Consolidado"]
+  "otn": ["Enviar número de OTN a COMEX"],
+  "lpn": ["LPN", "Enviar LPN Embarque"]
 };
 
 function getAlertsForShipment(sh){
