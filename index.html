@@ -1840,9 +1840,9 @@ function resolveChannel(raw, allowedList){
 
 function resolveGrupo(raw){
   const key = normTxt(raw);
-  if(key === "C" || key.startsWith("CALZ")) return "Calzado";
-  if(key === "R" || key.startsWith("ROP")) return "Ropa";
-  if(key === "A" || key.startsWith("ACC")) return "Accesorios";
+  if(key === "C" || key.startsWith("CALZ") || key.startsWith("FOOTW")) return "Calzado";
+  if(key === "R" || key.startsWith("ROP") || key.startsWith("TEXT") || key.startsWith("APPAR")) return "Ropa";
+  if(key === "A" || key.startsWith("ACC") || key.startsWith("HARDW") || key.startsWith("EQUIP")) return "Accesorios";
   return null;
 }
 
@@ -2016,11 +2016,11 @@ const INTERCOMPANY_BODEGAS = ["TRANS","DEPSI","DEPCO"];
 function tryParseFormatC(aoa, mes, log){
   const header = findHeaderRow(aoa, [["INTERCOMPANY"], ["MARCA"], ["GRUPO"]]);
   if(!header) return false;
-  const { rowIndex, colMap } = header;
+  const { rowIndex, colMap, rawRow } = header;
   const interCol = getColIdx(colMap, ["INTERCOMPANY"]);
   const mrcCol = getColIdx(colMap, ["MARCA"]);
   const grpCol = getColIdx(colMap, ["GRUPO"]);
-  const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
+  const qtyCol = getColIdx(colMap, ["CANTIDAD", "CANT", "QTY", "UNIDADES", "UNID", "PIEZAS", "TOTAL"]);
   // Columna de BODEGA (origen: TRANS / DEPSI / DEPCO) y columna de CONCEPTO/CANAL/DESTINO (MARATHON, OUTLET, ...)
   const bodCol = getColIdx(colMap, ["BODEGA", "ALMACEN", "ORIGEN"]);
   let cncCol = undefined;
@@ -2033,16 +2033,29 @@ function tryParseFormatC(aoa, mes, log){
   const dosColumnas = (bodCol !== undefined && cncCol !== undefined);
   // Archivos con una sola columna de destino: comportamiento anterior (solo suma al canal)
   const soloCol = dosColumnas ? undefined : getColIdx(colMap, ["CONCEPTO", "BODEGA", "CANAL", "DESTINO"]);
-  let count = 0, sinBodega = 0, sinConcepto = 0;
-  const conceptosNoRec = {};
+
+  let count = 0, leidas = 0, sinBodega = 0, sinConcepto = 0, sinCantidad = 0, sinGrupo = 0;
+  const conceptosNoRec = {}, gruposNoRec = {};
+  let ultimoInter = "";   // celdas combinadas: el nombre del intercompany solo viene en la primera fila
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
-    const intercompany = cellStr(row, interCol);
+    const celdaInter = cellStr(row, interCol);
+    if(celdaInter) ultimoInter = celdaInter;
+    const hayDatos = cellStr(row, grpCol) || cellStr(row, mrcCol) || cellNum(row, qtyCol);
+    if(!hayDatos) continue;                         // fila vacía
+    const intercompany = celdaInter || ultimoInter;
     if(!intercompany) continue;
+    leidas++;
     const marca = resolveMarca(cellStr(row, mrcCol));
     const grupo = resolveGrupo(cellStr(row, grpCol));
     const cantidad = cellNum(row, qtyCol);
-    if(!marca || !grupo || cantidad === 0) continue;
+    if(cantidad === 0){ sinCantidad++; continue; }
+    if(!marca || !grupo){
+      sinGrupo++;
+      const k = cellStr(row, grpCol) || "(vacío)";
+      gruposNoRec[k] = (gruposNoRec[k] || 0) + 1;
+      continue;
+    }
 
     let bodega = null, concepto = null;
     if(dosColumnas){
@@ -2070,10 +2083,17 @@ function tryParseFormatC(aoa, mes, log){
     }
     count++;
   }
-  let msg = `Intercompany: ${count} registros procesados` + (dosColumnas ? " (resta de Bodega y suma al Concepto/Canal)." : ".");
-  if(sinConcepto) msg += ` ${sinConcepto} fila(s) ignoradas por concepto no reconocido (${Object.keys(conceptosNoRec).slice(0,5).join(", ")}).`;
-  if(sinBodega) msg += ` ${sinBodega} fila(s) sin bodega reconocida: solo se sumó al concepto.`;
-  log.push({ type: sinConcepto ? "err" : "ok", msg });
+  const lista = (o) => Object.keys(o).slice(0,6).join(", ");
+  const colName = (idx) => idx === undefined ? "NO ENCONTRADA" : `"${rawRow[idx]}" (col ${idx+1})`;
+  let msg = `Intercompany: ${count} de ${leidas} filas procesadas` + (dosColumnas ? " (resta de Bodega y suma al Concepto/Canal)." : ".");
+  if(sinCantidad) msg += ` ${sinCantidad} sin cantidad.`;
+  if(sinGrupo) msg += ` ${sinGrupo} con grupo no válido (${lista(gruposNoRec)}).`;
+  if(sinConcepto) msg += ` ${sinConcepto} con concepto no reconocido (${lista(conceptosNoRec)}).`;
+  if(sinBodega) msg += ` ${sinBodega} sin bodega reconocida: solo se sumó al concepto.`;
+  if(count === 0 || sinConcepto || sinGrupo){
+    msg += ` Columnas detectadas → INTERCOMPANY: ${colName(interCol)}; MARCA: ${colName(mrcCol)}; GRUPO: ${colName(grpCol)}; CANTIDAD: ${colName(qtyCol)}; BODEGA: ${colName(dosColumnas ? bodCol : undefined)}; CONCEPTO: ${colName(dosColumnas ? cncCol : soloCol)}.`;
+  }
+  log.push({ type: (count === 0 || sinConcepto || sinGrupo) ? "err" : "ok", msg });
   return true;
 }
 
