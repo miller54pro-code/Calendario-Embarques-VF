@@ -293,6 +293,13 @@
   tr.grand-total-row td.grand-num{text-align:center;color:#c00000;font-variant-numeric:tabular-nums;}
   tr.grand-total-row td.grand-channel{text-align:center;color:#1c2333;font-variant-numeric:tabular-nums;}
   tr.empty-sep-row td{background:#f9fbfd;height:12px;border:none;}
+  /* ---- Colores de estatus en Microprocesos y Tareas ---- */
+  td.status-cell.st-pend{background:#fadbd8;}   /* PENDIENTE: rojo claro */
+  td.status-cell.st-comp{background:#d4f1db;}   /* COMPLETO: verde claro */
+  td.status-cell.st-na{background:#fff3bf;}     /* N/A: amarillo claro */
+  select.inline-status.st-pend{background:#fadbd8;color:#9b2c2c;border-color:#eaa9a4;font-weight:700;}
+  select.inline-status.st-comp{background:#d4f1db;color:#1e6b34;border-color:#9fd4ad;font-weight:700;}
+  select.inline-status.st-na{background:#fff3bf;color:#7a6200;border-color:#e3d27a;font-weight:700;}
 </style>
 </head>
 <body>
@@ -834,17 +841,17 @@ function computeConsolidadoOTN(sh, d0){
 const GANTT_TO_MICRO_MAPPING = {
   "importacion": ["Instrucciones de importación por producto"],
   "embarque": ["Instrucciones de embarque por comex"],
-  "oc_plan": ["Envío OC a producto"],
-  "oc_carton": ["Envío OC (LPN) a producto"],
-  "oc_canal": ["Trabajar respuesta OC de Silvi/Pao"],
-  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "Trabajar Archivos Intercompany:"],
+  "oc_plan": ["Cruce de PTS completos", "Cruce de PTS completos para creación de OC"],
+  "oc_carton": ["Cruce de PTS completos para creación de OC"],
+  "oc_canal": ["Envío OC a producto", "Envío OC (LPN) a producto"],
+  "intercompany": ["*Elaboración archivos Intercomapny", "*Envío correo de archivos Intercompanies", "*Carga precio Intercompany", "Trabajar Archivos Intercompany:"],
   "partidas": ["Carga partidas arancelarias"],
   "envio_pedido": ["*Envío del pedido a COMEX", "*Envío de pedido a comex"],
   "distribucion": ["Respuesta de distribución de tiendas"],
   "ocas": ["Elaboración Plantilla para OCAS-OCIS-DISTRIBUCIÓN", "Elaboración Plantilla OCA"],
   "ocas_ocis_lpn": ["Elaboración Plantilla para OCAS-OCIS (para todo el embarque)"],
-  "otn": ["Enviar número de OTN a COMEX"],
-  "lpn": ["LPN", "Enviar LPN Embarque"]
+  "otn": ["Elaboración Plantilla para OTN (consolidado)", "Crear número de OTN"],
+  "lpn": ["LPN", "LPN Consolidado"]
 };
 
 function getAlertsForShipment(sh){
@@ -1612,9 +1619,12 @@ function renderMicroThead(trackMode){
   }
 }
 
+function statusClass(v){
+  return v === "COMPLETO" ? "st-comp" : (v === "N/A" ? "st-na" : "st-pend");
+}
 function statusSelectHtml(id, field, value){
   const v = value || "";
-  return `<select class="inline-status" data-id="${id}" data-field="${field}"><option value="" ${v===""?"selected":""}>PENDIENTE</option><option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option><option value="N/A" ${v==="N/A"?"selected":""}>N/A</option></select>`;
+  return `<select class="inline-status ${statusClass(v)}" data-id="${id}" data-field="${field}"><option value="" ${v===""?"selected":""}>PENDIENTE</option><option value="COMPLETO" ${v==="COMPLETO"?"selected":""}>COMPLETO</option><option value="N/A" ${v==="N/A"?"selected":""}>N/A</option></select>`;
 }
 
 function dateInputHtml(id, field, value){
@@ -1662,15 +1672,15 @@ function renderMicroprocesos(){
     const orderCell = `<td><b>${escapeHtml(String(it.ord!=null?it.ord:""))}</b></td><td class="wrap">${escapeHtml(it.act||"")}</td>`;
     const actionsCell = `<td style="white-space:nowrap;"><button class="btn small" data-maction="edit" data-id="${it.id}">✏️</button><button class="btn small danger" data-maction="delete" data-id="${it.id}">🗑️</button></td>`;
     if(trackMode === "DUAL"){
-      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td><td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+      return `<tr>${orderCell}<td class="status-cell ${statusClass(it.adidas_status||"")}">${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td><td class="status-cell ${statusClass(it.reebok_status||"")}">${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
     }
     if(trackMode === "ADIDAS_ONLY"){
-      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>${actionsCell}</tr>`;
+      return `<tr>${orderCell}<td class="status-cell ${statusClass(it.adidas_status||"")}">${statusSelectHtml(it.id,"adidas_status",it.adidas_status)}</td><td>${dateInputHtml(it.id,"adidas_fecha",it.adidas_fecha)}</td><td>${obsInputHtml(it.id,"adidas_obs",it.adidas_obs)}</td>${actionsCell}</tr>`;
     }
     if(trackMode === "REEBOK_ONLY"){
-      return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
+      return `<tr>${orderCell}<td class="status-cell ${statusClass(it.reebok_status||"")}">${statusSelectHtml(it.id,"reebok_status",it.reebok_status)}</td><td>${dateInputHtml(it.id,"reebok_fecha",it.reebok_fecha)}</td><td>${obsInputHtml(it.id,"reebok_obs",it.reebok_obs)}</td>${actionsCell}</tr>`;
     }
-    return `<tr>${orderCell}<td>${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
+    return `<tr>${orderCell}<td class="status-cell ${statusClass(it.status||"")}">${statusSelectHtml(it.id,"status",it.status)}</td><td>${dateInputHtml(it.id,"fecha",it.fecha)}</td><td>${obsInputHtml(it.id,"obs",it.obs)}</td>${actionsCell}</tr>`;
   }).join("");
 }
 
@@ -1687,6 +1697,12 @@ document.getElementById("microTbody").addEventListener("change", (e)=>{
   const item = microState.items.find(it=>it.id===itemId);
   if(item){
     item[field] = el.value || null;
+    if(el.classList.contains("inline-status")){
+      const cls = statusClass(el.value);
+      ["st-pend","st-comp","st-na"].forEach(c=>{ el.classList.remove(c); const td = el.closest("td"); if(td) td.classList.remove(c); });
+      el.classList.add(cls);
+      const td = el.closest("td"); if(td) td.classList.add(cls);
+    }
     microSaveField(itemId, field, item[field]);
     checkAllAlerts();
     showToast("✅ Cambio guardado al instante en la nube");
@@ -1931,9 +1947,14 @@ function findHeaderRow(aoa, requiredAliases){
 }
 
 function getColIdx(colMap, aliases){
+  // 1) coincidencia exacta con cualquier alias (evita que "GRUPO" tome "GRUPO DE COMPRAS")
+  for(const alias of aliases){
+    if(colMap[alias] !== undefined) return colMap[alias];
+  }
+  // 2) si no hay exacta, la primera columna que contenga el alias
   for(const alias of aliases){
     for(const key in colMap){
-      if(key === alias || key.includes(alias)) return colMap[key];
+      if(key.includes(alias)) return colMap[key];
     }
   }
   return undefined;
@@ -2036,15 +2057,10 @@ function tryParseFormatC(aoa, mes, log){
 
   let count = 0, leidas = 0, sinBodega = 0, sinConcepto = 0, sinCantidad = 0, sinGrupo = 0;
   const conceptosNoRec = {}, gruposNoRec = {};
-  let ultimoInter = "";   // celdas combinadas: el nombre del intercompany solo viene en la primera fila
   for(let r = rowIndex + 1; r < aoa.length; r++){
     const row = aoa[r] || [];
-    const celdaInter = cellStr(row, interCol);
-    if(celdaInter) ultimoInter = celdaInter;
-    const hayDatos = cellStr(row, grpCol) || cellStr(row, mrcCol) || cellNum(row, qtyCol);
-    if(!hayDatos) continue;                         // fila vacía
-    const intercompany = celdaInter || ultimoInter;
-    if(!intercompany) continue;
+    const intercompany = cellStr(row, interCol);
+    if(!intercompany || ["N/A","NA","-","0","NO","NINGUNO"].includes(normTxt(intercompany))) continue;   // fila que no es intercompany
     leidas++;
     const marca = resolveMarca(cellStr(row, mrcCol));
     const grupo = resolveGrupo(cellStr(row, grpCol));
