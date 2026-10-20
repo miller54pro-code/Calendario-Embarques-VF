@@ -1946,19 +1946,17 @@ function tryParseIntercompanyRestar(aoa, mes, log){
   
   const { rowIndex, colMap } = header;
   
-  // SOLUCIÓN: Usamos búsqueda exacta (colMap["..."]) en lugar de getColIdx() 
-  // para evitar que atrape columnas engañosas como "Grupo de compras" o "Puerto de Embarque"
   const interCol = colMap["INTERCOMPANY"];
   const mrcCol = colMap["MARCA"];
   const grpCol = colMap["GRUPO"];
   const bodegaCol = colMap["BODEGA"]; 
   
-  // Para la cantidad mantenemos getColIdx por si en algún archivo viene como QTY o UNIDADES
+  // Añadimos la búsqueda de la columna CONCEPTO
+  const conceptoCol = getColIdx(colMap, ["CONCEPTO", "CANAL", "DESTINO", "CANAL FINAL"]);
   const qtyCol = getColIdx(colMap, ["CANTIDAD", "QTY", "UNIDADES"]);
   
-  // Si falta alguna columna clave, dejamos que otro formato lo intente
   if(interCol === undefined || bodegaCol === undefined || qtyCol === undefined || grpCol === undefined) return false;
-
+  
   let count = 0;
   let ignoradas = 0;
   for(let r = rowIndex + 1; r < aoa.length; r++){
@@ -1969,14 +1967,17 @@ function tryParseIntercompanyRestar(aoa, mes, log){
     const marca = resolveMarca(cellStr(row, mrcCol));
     const grupo = resolveGrupo(cellStr(row, grpCol));
     const bodegaRaw = cellStr(row, bodegaCol);
+    const conceptoRaw = conceptoCol !== undefined ? cellStr(row, conceptoCol) : "";
     const cantidad = cellNum(row, qtyCol);
     
-    const destino = resolveChannel(bodegaRaw, ["TRANS", "DEPCO", "DEPSI"]);
+    // Identificamos el origen (Bodega) y el destino (Concepto)
+    const origen = resolveChannel(bodegaRaw, ["TRANS", "DEPCO", "DEPSI"]);
+    const destino = resolveChannel(conceptoRaw, null);
     
-    // Ahora 'grupo' tendrá el valor correcto (ej. "Ropa", "Calzado") y pasará este filtro sin problemas
     if(!marca || !grupo || cantidad === 0) continue;
     
-    if(!destino){
+    // Si no hay origen ni destino válido, ignoramos la fila
+    if(!origen && !destino){
         ignoradas++; 
         continue;
     }
@@ -1984,13 +1985,21 @@ function tryParseIntercompanyRestar(aoa, mes, log){
     ensureTriadRows(mes, "INTERCOMPANIES", intercompany, marca, {});
     const targetRow = ensureRow(mes, "INTERCOMPANIES", intercompany, marca, grupo, {});
     
-    // Restamos la cantidad del canal
-    targetRow.channels[destino] = (targetRow.channels[destino] || 0) - Math.abs(cantidad);
+    // 1. Restamos la cantidad del origen (BODEGA)
+    if(origen){
+        targetRow.channels[origen] = (targetRow.channels[origen] || 0) - Math.abs(cantidad);
+    }
+    
+    // 2. Sumamos la cantidad al destino (CONCEPTO)
+    if(destino){
+        targetRow.channels[destino] = (targetRow.channels[destino] || 0) + Math.abs(cantidad);
+    }
+    
     count++;
   }
   
-  let msg = `Intercompany (Salidas): ${count} registros procesados restando de BODEGA.`;
-  if(ignoradas > 0) msg += ` (${ignoradas} ignorados por bodega no válida).`;
+  let msg = `Intercompany (Doble vía): ${count} procesados (restados de BODEGA y sumados a CONCEPTO).`;
+  if(ignoradas > 0) msg += ` (${ignoradas} ignorados por origen/destino no válidos).`;
   log.push({ type: "ok", msg });
   
   return true;
