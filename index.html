@@ -663,6 +663,7 @@ function initFirebase(){
       renderAll();
     }, (err)=>{
       console.warn("Error leyendo embarques de Firebase:", err);
+      shipmentsLoaded = true;
       document.getElementById("firebaseErrorBanner").style.display = "block";
       setSyncStatus("local");
     });
@@ -678,10 +679,14 @@ function initFirebase(){
     
     microRef.on("value", (snap)=>{
       const val = snap.val();
+      const firstLoad = !microLoaded;
       if(val){
         microState.items = Array.isArray(val)
           ? val.filter(Boolean)
           : Object.entries(val).map(([k,v])=>({ ...v, id: v.id || k }));
+      } else if(firstLoad && microState.items.length){
+        // La nube está vacía pero hay respaldo local: subirlo SIN sobrescribir nada existente
+        microCreateIfMissing(microState.items.filter(it=> it && it.id && (!it.shipmentId || state.shipmentsMap[it.shipmentId])));
       }
       microLoaded = true;
       ensureTasksForAllShipments();
@@ -690,6 +695,11 @@ function initFirebase(){
       const typing = ae && ae.closest && ae.closest("#microTbody") && /INPUT|TEXTAREA|SELECT/.test(ae.tagName);
       if(!typing) renderMicroprocesos();
       checkAllAlerts();
+    }, (err)=>{
+      console.warn("Error leyendo microprocesos de Firebase:", err);
+      microLoaded = true;
+      document.getElementById("firebaseErrorBanner").style.display = "block";
+      setSyncStatus("local");
     });
 
     resumenRef.on("value",(snap)=>{
@@ -1603,7 +1613,20 @@ function generateTasksForShipment(shipment){
     ord: t.ord, act: t.act, ...blankTaskFields(trackMode)
   }));
 }
+function microCreateIfMissing(tasks){
+  // Crea cada tarea en Firebase SOLO si ese nodo todavía no existe (nunca pisa estados guardados)
+  if(!(cloudMode && microRef)) return;
+  tasks.forEach(t=>{
+    if(!t || !t.id) return;
+    microRef.child(t.id).transaction(
+      (current)=> (current === null ? cleanTaskItem(t) : undefined)
+    ).catch(err=> console.warn("No se pudo crear tarea:", t.id, err));
+  });
+}
 function ensureTasksForAllShipments(){
+  // En modo nube, no generar tareas hasta haber recibido embarques Y microprocesos desde Firebase.
+  // Antes se generaban tareas en blanco con datos locales/vacíos y se escribían encima de las completadas.
+  if(cloudMode && !(microLoaded && shipmentsLoaded)) return;
   const existingIds = new Set(microState.items.map(it=>it.id));
   const existingShipmentIds = new Set(microState.items.filter(it=>it.shipmentId).map(it=>it.shipmentId));
   const created = [];
@@ -1618,9 +1641,8 @@ function ensureTasksForAllShipments(){
     });
   });
   if(created.length){
-    const u = {};
-    created.forEach(t=>{ u[t.id] = cleanTaskItem(t); });
-    microPersist(u);
+    saveLocalBackup();
+    microCreateIfMissing(created);
   }
 }
 function normStatus(v){
