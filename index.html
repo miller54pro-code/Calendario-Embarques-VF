@@ -948,6 +948,60 @@ function getAlertsForShipment(sh){
   });
   return alerts;
 }
+function enviarAlertaPorPowerAutomate(alertas) {
+  if (!alertas || alertas.length === 0) return;
+
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const hoyStr = hoy.toISOString().slice(0, 10);
+
+  // Control para no enviar correos repetidos el mismo día
+  if (localStorage.getItem("ultimo_correo_alerta") === hoyStr) return;
+
+  let resumen = "Hola,\n\nSe presenta el resumen actualizado de actividades de embarques en Medeport:\n\n";
+
+  alertas.forEach(a => {
+    const fechaLimite = new Date(a.dueDate);
+    fechaLimite.setHours(0,0,0,0);
+
+    let estadoTexto = "";
+    if (fechaLimite < hoy) {
+      estadoTexto = `🚨 ESTÁ ATRASADA (Venció el ${fmtDMY(a.dueDate)})`;
+    } else {
+      estadoTexto = `📌 ESTÁ PENDIENTE PARA HOY (${fmtDMY(a.dueDate)})`;
+    }
+
+    resumen += `• [${a.marca}] Embarque: "${a.shipmentName}"\n`;
+    resumen += `  Actividad: ${a.activityLabel}\n`;
+    resumen += `  Estado: ${estadoTexto}\n\n`;
+  });
+
+  resumen += "Por favor ingresar al sistema para actualizar el estado de los microprocesos.\n\nSaludos,";
+
+  // Tu URL de Power Automate
+  const webhookUrl = "https://defaulta25466cf9db04555b90b3b29d4097f.f2.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/03/workflows/972706deaf094014901d4df67cafddf9/triggers/manual/paths/invoke?api-version=1";
+
+  const payload = {
+    // Reemplaza con las direcciones reales separadas por punto y coma (;)
+    destinatario: "sergio.arellano@mundodeportivo-ec.com; miller.buitron@mundodeportivo-ec.com",
+    asunto: "⚠️ Notificación de Actividades y Embarques - Medeport",
+    mensaje: resumen
+  };
+
+  fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (res.ok) {
+      console.log("📧 Correo de alerta enviado vía Outlook.");
+      localStorage.setItem("ultimo_correo_alerta", hoyStr);
+      showToast("📧 Notificación enviada a Outlook corporativo");
+    }
+  })
+  .catch(err => console.error("Error al enviar la alerta:", err));
+}
 function checkAllAlerts(){
   const shipments = getShipmentsArray();
   let allAlerts = [];
@@ -955,7 +1009,13 @@ function checkAllAlerts(){
     const shAlerts = getAlertsForShipment(sh);
     allAlerts = allAlerts.concat(shAlerts);
   });
+
   renderAlertsUI(allAlerts);
+
+  if (allAlerts.length > 0) {
+    enviarAlertaPorPowerAutomate(allAlerts);
+  }
+
   return allAlerts;
 }
 function renderAlertsUI(alerts){
